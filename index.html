@@ -172,6 +172,24 @@ kbd{font-family:var(--mono);font-size:12px;background:rgba(0,0,0,.4);border:1px 
 .tag-field input{flex:1;min-width:0;background:none;border:0;outline:none;color:var(--text);font-family:var(--mono);font-size:22px;padding:14px 4px}
 .err{color:#ff9db0;font-size:13px}
 .start-card .btn.primary{min-width:240px}
+.opt-tag{color:var(--dim);letter-spacing:.1em;margin-left:6px}
+.ig-link{font-family:var(--mono);font-size:13px;color:var(--p3);text-decoration:none;justify-self:start}
+.ig-link:hover{text-decoration:underline}
+.lb .block-head{flex-direction:column;align-items:flex-start;gap:4px}
+.lb-list{list-style:none;margin:0;padding:0;display:grid}
+.lb-list li{display:grid;grid-template-columns:30px minmax(0,1fr) auto;gap:10px;align-items:baseline;padding:8px 6px;border-bottom:1px solid var(--line);font-family:var(--mono);font-size:14px}
+.lb-list li:last-child{border-bottom:0}
+.lb-list .rk{color:var(--dim);font-variant-numeric:tabular-nums}
+.lb-list li:nth-child(1) .rk{color:#ffd76a} .lb-list li:nth-child(2) .rk{color:#d9e2ff} .lb-list li:nth-child(3) .rk{color:#ffb38a}
+.lb-list .who{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.lb-list .who a{color:var(--text);text-decoration:none;border-bottom:1px dotted var(--line2)}
+.lb-list .who a:hover{color:var(--p3);border-bottom-color:var(--p3)}
+.lb-list .ig{font-size:10px;color:var(--p3);margin-left:6px;letter-spacing:.06em}
+.lb-list .sc{font-variant-numeric:tabular-nums;text-align:right}
+.lb-list .sc small{display:block;font-size:10px;color:var(--dim)}
+.lb-list li.me{background:rgba(77,139,255,.14);border-radius:8px;border-bottom-color:transparent}
+.lb-list li.gap{grid-template-columns:1fr;color:var(--dim);font-size:12px;text-align:center;padding:2px 0;border-bottom:0}
+.rank-line{font-family:var(--mono);font-size:14px;color:var(--p3)}
 .who-tag{font-family:var(--mono);font-size:22px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .setup{gap:0;padding-block:6px}
 .opt{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px;align-items:center;padding-block:12px;border-bottom:1px solid var(--line)}
@@ -287,7 +305,11 @@ label.btn{cursor:pointer;display:inline-block}
     <p class="lede">Hit the notes in time with the music and keep every part of the song playing. Pick the name that goes on your clips.</p>
     <label class="label" for="tag">Your producer tag</label>
     <div class="tag-field"><span aria-hidden="true">@</span><input id="tag" maxlength="19" autocomplete="nickname" spellcheck="false" placeholder="yourname"></div>
-    <p class="err" id="tagErr" hidden>Add a tag so other producers know who they're up against.</p>
+    <p class="err" id="tagErr" hidden>Add a tag using letters, numbers, dots, dashes or underscores.</p>
+    <label class="label" for="ig">Instagram <span class="opt-tag">optional</span></label>
+    <div class="tag-field"><span aria-hidden="true">@</span><input id="ig" maxlength="30" autocomplete="off" spellcheck="false" placeholder="yourhandle"></div>
+    <p class="err" id="igErr" hidden>Instagram handles use letters, numbers, dots and underscores.</p>
+    <p class="hint">Your tag on the leaderboard links to your Instagram.</p>
     <button class="btn primary big" type="submit">Enter the club</button>
   </form>
 </section>
@@ -337,11 +359,17 @@ label.btn{cursor:pointer;display:inline-block}
       <div class="panel">
         <div class="block-head"><span class="label">Producer</span><button class="link" id="changeTag" type="button">Change tag</button></div>
         <p class="who-tag" id="tagShow">@you</p>
+        <a class="ig-link" id="igShow" target="_blank" rel="noopener noreferrer nofollow" hidden></a>
         <div class="stats">
           <div><b id="bestStat">0</b><span>Best score</span></div>
           <div><b id="comboStat">0</b><span>Best combo</span></div>
           <div><b id="runsStat">0</b><span>Runs</span></div>
         </div>
+      </div>
+      <div class="panel lb">
+        <div class="block-head"><h2>Leaderboard</h2><span class="label" id="lbScope"></span></div>
+        <ol class="lb-list" id="lbList"></ol>
+        <p class="hint" id="lbNote"></p>
       </div>
       <details class="panel how">
         <summary>How scoring works</summary>
@@ -389,6 +417,7 @@ label.btn{cursor:pointer;display:inline-block}
       <div class="eyebrow" id="rCrate"></div>
       <p class="res-title" id="rTitle">You take it</p>
       <p class="lede" id="rSub"></p>
+      <p class="rank-line" id="rRank" hidden></p>
     </div>
     <div class="listen panel">
       <h2>Hear the runs</h2>
@@ -570,7 +599,7 @@ const store = {
   get(k, d){ try { const v = localStorage.getItem("chopbattle:"+k); return v === null ? d : JSON.parse(v); } catch(e){ return d; } },
   set(k, v){ try { localStorage.setItem("chopbattle:"+k, JSON.stringify(v)); } catch(e){} }
 };
-const profile = { tag: store.get("tag","@you"), rep: store.get("rep",1400), wins: store.get("wins",0), losses: store.get("losses",0), best: store.get("best",0), genre: store.get("genre2","rotn"), runs: store.get("runs", 0), bestCombo: store.get("bestCombo", 0), diff: store.get("diff","easy") };
+const profile = { tag: store.get("tag","@you"), rep: store.get("rep",1400), wins: store.get("wins",0), losses: store.get("losses",0), best: store.get("best",0), genre: store.get("genre2","rotn"), ig: store.get("ig", ""), runs: store.get("runs", 0), bestCombo: store.get("bestCombo", 0), diff: store.get("diff","easy") };
 if (!GENRES[profile.genre]) profile.genre = "rotn";
 
 /* ---------- dom ---------- */
@@ -1099,7 +1128,7 @@ function selectGenre(id){
   if (profile.genre === id || !GENRES[id]) return;
   stopPlayback();
   profile.genre = id; store.set("genre2", id);
-  layoutDeck(); renderCrateDetail(); renderLegend();
+  layoutDeck(); renderCrateDetail(); renderLegend(); loadBoard();
 }
 function renderLegend(){
   const g = GENRES[profile.genre], ul = $("legend"); ul.textContent = "";
@@ -1119,8 +1148,10 @@ function renderRoster(){
   });
   $("onlineCount").textContent = OPPONENTS.length + " online";
 }
+const igUrl = h => `https://www.instagram.com/${encodeURIComponent(h)}/`;
 function renderStats(){
   $("tagShow").textContent = profile.tag;
+  const il = $("igShow"); il.hidden = !profile.ig; if (profile.ig){ il.href = igUrl(profile.ig); il.textContent = "instagram.com/" + profile.ig; }
   $("bestStat").textContent = profile.best.toLocaleString();
   $("comboStat").textContent = profile.bestCombo;
   $("runsStat").textContent = profile.runs;
@@ -1145,7 +1176,7 @@ function renderDiffDesc(){
     : profile.diff === "normal" ? "Arrow keys · the full chart"
     : six ? "Two hands · adds Shift for vocals and Space for bass" : "Arrow keys · full chart, faster scroll";
 }
-function renderDiff(){ renderDiffDesc(); ["easy", "normal", "hard"].forEach(d => $("diff" + d[0].toUpperCase() + d.slice(1)).setAttribute("aria-checked", String(profile.diff === d))); renderKeys(GENRES[profile.genre]); renderLegend(); }
+function renderDiff(){ renderDiffDesc(); if ($("lbList") && !$("lobby").hidden) loadBoard(); ["easy", "normal", "hard"].forEach(d => $("diff" + d[0].toUpperCase() + d.slice(1)).setAttribute("aria-checked", String(profile.diff === d))); renderKeys(GENRES[profile.genre]); renderLegend(); }
 
 /* ---------- queue ---------- */
 let queueTimers = [];
@@ -1481,6 +1512,7 @@ function finish(){
     sub = `You hit ${hitsOf(you)} of ${total} notes and held ${you.streaks} of ${totalHolds} long notes.`;
   }
   profile.runs++; store.set("runs", profile.runs);
+  submitScore(gid, profile.diff, you, total ? Math.round((you.counts.perfect + you.counts.great * .8 + you.counts.good * .5) / total * 1000) / 10 : 0);
   if (you.max > profile.bestCombo){ profile.bestCombo = you.max; store.set("bestCombo", you.max); }
   if (you.score > profile.best){ profile.best = you.score; store.set("best", profile.best); sub += " New personal best."; }
   $("rTitle").textContent = title; $("rTitle").className = "res-title " + cls;
@@ -1631,6 +1663,55 @@ function drawRec(t){
   c.fillText(`REC ${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`, 46, H - 33);
   c.fillStyle = "rgba(190,224,255,.6)"; c.fillRect(0, SPLIT_Y - 1, W, 2);
   c.textBaseline = "alphabetic";
+}
+
+/* ---------- leaderboard (runs on the MINI MANIA website; Claude's page has no server to save to) ---------- */
+const DIFF_NAME = { easy:"Easy", normal:"Normal", hard:"Hard" };
+let lbSeq = 0;
+function lbRow(r, rank, me){
+  const li = document.createElement("li"); if (me) li.className = "me";
+  const rk = document.createElement("span"); rk.className = "rk"; rk.textContent = "#" + rank;
+  const who = document.createElement("span"); who.className = "who";
+  if (r.ig){ const a = document.createElement("a"); a.href = igUrl(r.ig); a.target = "_blank"; a.rel = "noopener noreferrer nofollow"; a.textContent = "@" + r.tag; a.title = "instagram.com/" + r.ig; who.appendChild(a); const i = document.createElement("span"); i.className = "ig"; i.textContent = "IG"; who.appendChild(i); }
+  else who.textContent = "@" + r.tag;
+  const sc = document.createElement("span"); sc.className = "sc"; sc.textContent = Number(r.score).toLocaleString();
+  const sm = document.createElement("small"); sm.textContent = `${r.acc}% · ${r.combo}x`; sc.appendChild(sm);
+  li.append(rk, who, sc); return li;
+}
+async function loadBoard(){
+  const g = GENRES[profile.genre], list = $("lbList"), note = $("lbNote"), seq = ++lbSeq;
+  $("lbScope").textContent = `${g.name} · ${DIFF_NAME[profile.diff]}`;
+  if (inClaude){ list.textContent = ""; note.textContent = "The leaderboard lives on the MINI MANIA website, where your runs are saved."; return; }
+  note.textContent = "Loading…";
+  try {
+    const me = profile.tag.replace(/^@/, "");
+    const r = await fetch(`api/scores?track=${encodeURIComponent(profile.genre)}&diff=${profile.diff}&tag=${encodeURIComponent(me)}`, { cache: "no-store" });
+    const data = await r.json();
+    if (seq !== lbSeq) return;
+    if (!r.ok) throw new Error(data.error || "error");
+    list.textContent = "";
+    data.top.forEach((row, i) => list.appendChild(lbRow(row, i + 1, row.tag.toLowerCase() === me.toLowerCase())));
+    if (data.you && data.you.rank > data.top.length){
+      const gap = document.createElement("li"); gap.className = "gap"; gap.textContent = "···"; list.appendChild(gap);
+      list.appendChild(lbRow(data.you, data.you.rank, true));
+    }
+    note.textContent = data.total ? `${data.total} producer${data.total === 1 ? "" : "s"} on this board. Tags with IG link to Instagram.` : `No scores on ${DIFF_NAME[profile.diff]} yet. Play a run to take #1.`;
+  } catch(e){
+    if (seq !== lbSeq) return;
+    list.textContent = ""; note.textContent = "Couldn't load the leaderboard. Try again in a moment.";
+  }
+}
+async function submitScore(gid, diff, p, accPct){
+  const el = $("rRank"); el.hidden = true;
+  if (inClaude || !GENRES[gid] || !GENRES[gid].audio) return;
+  try {
+    const r = await fetch("api/scores", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ track: gid, diff, tag: profile.tag.replace(/^@/, ""), ig: profile.ig || "", score: p.score, acc: accPct, combo: p.max }) });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error);
+    el.textContent = `You're #${data.rank} of ${data.total} on the ${GENRES[gid].name} · ${DIFF_NAME[diff]} leaderboard.`;
+  } catch(e){ el.textContent = "Your score couldn't be posted to the leaderboard this time."; }
+  el.hidden = false; loadBoard();
 }
 
 /* ---------- live face-cam (works when the game runs on its own site; Claude's page frame blocks cameras) ---------- */
@@ -1784,17 +1865,21 @@ $("soloBtn").addEventListener("click", () => { cleanTag(); startGame(profile.gen
 $("cancelBtn").addEventListener("click", () => { clearQueue(); show("lobby"); });
 $("quitBtn").addEventListener("click", quit);
 $("rematchBtn").addEventListener("click", () => { stopPlayback(); if (lastMatch) startGame(lastMatch.gid, lastMatch.opp); });
-$("lobbyBtn").addEventListener("click", () => { stopPlayback(); renderStats(); show("lobby"); });
+$("lobbyBtn").addEventListener("click", () => { stopPlayback(); renderStats(); show("lobby"); loadBoard(); });
 $("pbYou").addEventListener("click", e => togglePlayback(e.currentTarget, () => lastMatch && { rec: lastMatch.you.rec, gid: lastMatch.gid }));
 $("pbOpp").addEventListener("click", e => togglePlayback(e.currentTarget, () => lastMatch && { rec: lastMatch.cpu.rec, gid: lastMatch.gid }));
 $("cratePreview").addEventListener("click", e => { const id = profile.genre; togglePlayback(e.currentTarget, () => ({ rec: demoRec(id), gid: id, from: INTRO_BARS + 8, to: INTRO_BARS + 12 })); });
 $("tag").value = profile.tag === "@you" ? "" : profile.tag.replace(/^@/, "");
+$("ig").value = profile.ig || "";
 $("startForm").addEventListener("submit", e => {
   e.preventDefault();
-  const v = $("tag").value.trim().replace(/^@+/, "").replace(/\s+/g, "_").slice(0, 19);
+  const v = $("tag").value.trim().replace(/^@+/, "").replace(/\s+/g, "_").replace(/[^A-Za-z0-9_.-]/g, "").slice(0, 19);
   if (!v){ $("tagErr").hidden = false; $("tag").focus(); return; }
-  $("tagErr").hidden = true; $("tag").value = v; profile.tag = "@" + v; store.set("tag", profile.tag);
-  initAudio(); renderStats(); show("lobby"); layoutDeck();
+  const ig = $("ig").value.trim().replace(/^@+/, "").replace(/^https?:\/\/(www\.)?instagram\.com\//i, "").replace(/\/.*$/, "");
+  if (ig && !/^[A-Za-z0-9._]{1,30}$/.test(ig)){ $("igErr").hidden = false; $("ig").focus(); return; }
+  $("tagErr").hidden = true; $("igErr").hidden = true; $("tag").value = v; $("ig").value = ig;
+  profile.tag = "@" + v; store.set("tag", profile.tag); profile.ig = ig; store.set("ig", ig);
+  initAudio(); renderStats(); show("lobby"); layoutDeck(); loadBoard();
 });
 $("changeTag").addEventListener("click", () => { stopPlayback(); show("start"); $("tag").focus(); });
 $("diffEasy").addEventListener("click", () => { profile.diff = "easy"; store.set("diff", "easy"); renderDiff(); });
