@@ -173,6 +173,23 @@ kbd{font-family:var(--mono);font-size:12px;background:rgba(0,0,0,.4);border:1px 
 .err{color:#ff9db0;font-size:13px}
 .start-card .btn.primary{min-width:240px}
 .who-tag{font-family:var(--mono);font-size:22px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.setup{gap:0;padding-block:6px}
+.opt{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px;align-items:center;padding-block:12px;border-bottom:1px solid var(--line)}
+.opt:last-of-type{border-bottom:0}
+.opt-text{display:grid;gap:2px;min-width:0}
+.opt-name{font-family:var(--display);font-weight:700;font-size:13px;letter-spacing:.04em;text-transform:uppercase}
+.opt-desc{font-size:13px;color:var(--muted)}
+.opt-ctl{display:flex;align-items:center;gap:10px}
+.switch{position:relative;width:54px;height:30px;flex:none;border-radius:999px;border:1px solid var(--line2);background:rgba(0,0,0,.45);padding:0;transition:background .18s,border-color .18s,box-shadow .18s}
+.switch .knob{position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:var(--muted);transition:transform .18s,background .18s}
+.switch[aria-checked="true"]{background:var(--p2);border-color:var(--p2);box-shadow:0 0 16px rgba(77,139,255,.5)}
+.switch.rec[aria-checked="true"]{background:var(--rec);border-color:var(--rec);box-shadow:0 0 16px rgba(255,59,92,.45)}
+.switch[aria-checked="true"] .knob{transform:translateX(24px);background:#fff}
+.state{font-family:var(--mono);font-size:12px;letter-spacing:.12em;color:var(--dim);min-width:2.4em;text-align:right}
+.state.on{color:#fff}
+.setup .cam-msg{padding-bottom:10px}
+@media (max-width:520px){.opt{grid-template-columns:1fr}.opt .seg{justify-self:start}}
+.cta .btn.primary.big{min-width:220px}
 .seg{display:inline-flex;border:1px solid var(--line2);border-radius:999px;padding:3px;gap:2px}
 .seg button{background:none;border:0;border-radius:999px;padding:7px 14px;font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
 .seg button[aria-checked="true"]{background:var(--text);color:var(--void)}
@@ -267,7 +284,7 @@ label.btn{cursor:pointer;display:inline-block}
   <form class="start-card" id="startForm" novalidate>
     <p class="eyebrow">Keyboard beat battles</p>
     <h1 class="logo">MINI MANIA</h1>
-    <p class="lede">Hit the notes in time with the music and battle other producers. Pick the name the room will see.</p>
+    <p class="lede">Hit the notes in time with the music and keep every part of the song playing. Pick the name that goes on your clips.</p>
     <label class="label" for="tag">Your producer tag</label>
     <div class="tag-field"><span aria-hidden="true">@</span><input id="tag" maxlength="19" autocomplete="nickname" spellcheck="false" placeholder="yourname"></div>
     <p class="err" id="tagErr" hidden>Add a tag so other producers know who they're up against.</p>
@@ -282,7 +299,7 @@ label.btn{cursor:pointer;display:inline-block}
       <header class="brand">
         <p class="eyebrow">Keyboard beat battles</p>
         <h1 class="logo">MINI MANIA</h1>
-        <p class="lede">A rhythm game for beatmakers. Pick a track, hit the notes as they fall in time with the music, hold the long ones, build your combo, and outplay your opponent.</p>
+        <p class="lede">A rhythm game for beatmakers. Pick a track, hit the notes as they fall in time with the music, hold the long ones, and keep the whole song playing.</p>
       </header>
       <div class="block">
         <div class="block-head"><span class="label">Pick a track</span><span class="label" id="crateCount">1 / 24</span></div>
@@ -296,15 +313,24 @@ label.btn{cursor:pointer;display:inline-block}
           <button class="link" id="cratePreview" type="button" data-label="▶ Preview">▶ Preview</button>
         </div>
       </div>
-      <div class="cta">
-        <button class="btn primary big" id="findBtn" type="button">Find opponent</button>
-        <button class="btn" id="soloBtn" type="button">Practice</button>
-        <div class="seg" role="radiogroup" aria-label="Difficulty"><button type="button" role="radio" id="diffEasy" aria-checked="true">Easy</button><button type="button" role="radio" id="diffNormal" aria-checked="false">Normal</button><button type="button" role="radio" id="diffHard" aria-checked="false">Hard</button></div>
-        <button class="toggle" id="recToggle" type="button" aria-pressed="false">Record run</button>
-        <button class="toggle cam-toggle" id="camToggle" type="button" aria-pressed="false">Face-cam</button>
-        <video class="cam-mini" id="camMini" muted playsinline autoplay hidden></video>
+      <div class="panel setup" id="setup">
+        <div class="opt">
+          <div class="opt-text"><span class="opt-name">Difficulty</span><span class="opt-desc" id="diffDesc"></span></div>
+          <div class="seg" role="radiogroup" aria-label="Difficulty"><button type="button" role="radio" id="diffEasy" aria-checked="true">Easy</button><button type="button" role="radio" id="diffNormal" aria-checked="false">Normal</button><button type="button" role="radio" id="diffHard" aria-checked="false">Hard</button></div>
+        </div>
+        <div class="opt" id="recRow">
+          <div class="opt-text"><span class="opt-name">Record run</span><span class="opt-desc">Saves a vertical clip of your run to post</span></div>
+          <div class="opt-ctl"><span class="state" id="recState">OFF</span><button class="switch rec" id="recToggle" type="button" role="switch" aria-checked="false" aria-label="Record run"><span class="knob"></span></button></div>
+        </div>
+        <div class="opt">
+          <div class="opt-text"><span class="opt-name">Face-cam</span><span class="opt-desc" id="camDesc">Shows your camera under the lanes and puts you in your clip</span></div>
+          <div class="opt-ctl"><video class="cam-mini" id="camMini" muted playsinline autoplay hidden></video><span class="state" id="camState">OFF</span><button class="switch" id="camToggle" type="button" role="switch" aria-checked="false" aria-label="Face-cam"><span class="knob"></span></button></div>
+        </div>
+        <p class="hint cam-msg" id="camMsg" hidden></p>
       </div>
-      <p class="hint cam-msg" id="camMsg" hidden></p>
+      <div class="cta">
+        <button class="btn primary big" id="soloBtn" type="button">Solo play</button>
+      </div>
       <p class="keys" id="keysHint"></p>
     </div>
     <aside class="side-col">
@@ -312,15 +338,10 @@ label.btn{cursor:pointer;display:inline-block}
         <div class="block-head"><span class="label">Producer</span><button class="link" id="changeTag" type="button">Change tag</button></div>
         <p class="who-tag" id="tagShow">@you</p>
         <div class="stats">
-          <div><b id="repStat">1400</b><span>Rep</span></div>
-          <div><b id="recStat">0–0</b><span>W–L</span></div>
-          <div><b id="bestStat">0</b><span>Best</span></div>
+          <div><b id="bestStat">0</b><span>Best score</span></div>
+          <div><b id="comboStat">0</b><span>Best combo</span></div>
+          <div><b id="runsStat">0</b><span>Runs</span></div>
         </div>
-      </div>
-      <div class="panel">
-        <div class="block-head"><h2>Waiting room</h2><span class="label" id="onlineCount">6 online</span></div>
-        <ul class="roster" id="roster"></ul>
-        <p class="hint">Opponents are CPU producers for now.</p>
       </div>
       <details class="panel how">
         <summary>How scoring works</summary>
@@ -545,7 +566,7 @@ const store = {
   get(k, d){ try { const v = localStorage.getItem("chopbattle:"+k); return v === null ? d : JSON.parse(v); } catch(e){ return d; } },
   set(k, v){ try { localStorage.setItem("chopbattle:"+k, JSON.stringify(v)); } catch(e){} }
 };
-const profile = { tag: store.get("tag","@you"), rep: store.get("rep",1400), wins: store.get("wins",0), losses: store.get("losses",0), best: store.get("best",0), genre: store.get("genre2","rotn"), diff: store.get("diff","easy") };
+const profile = { tag: store.get("tag","@you"), rep: store.get("rep",1400), wins: store.get("wins",0), losses: store.get("losses",0), best: store.get("best",0), genre: store.get("genre2","rotn"), runs: store.get("runs", 0), bestCombo: store.get("bestCombo", 0), diff: store.get("diff","easy") };
 if (!GENRES[profile.genre]) profile.genre = "rotn";
 
 /* ---------- dom ---------- */
@@ -1023,7 +1044,7 @@ function renderKeys(g){
   }
 }
 function renderCrateDetail(){
-  const g = GENRES[profile.genre]; renderKeys(g);
+  const g = GENRES[profile.genre]; renderKeys(g); if ($("diffDesc")) renderDiffDesc();
   $("crateName").textContent = g.name;
   $("crateMeta").textContent = g.audio ? `${g.artist} · ${g.style} · ${bpmLabel(g)} BPM` : `${g.style} · ${g.bpm} BPM · ${g.key}`;
 }
@@ -1087,9 +1108,9 @@ function renderRoster(){
 }
 function renderStats(){
   $("tagShow").textContent = profile.tag;
-  $("repStat").textContent = profile.rep;
-  $("recStat").textContent = `${profile.wins}–${profile.losses}`;
   $("bestStat").textContent = profile.best.toLocaleString();
+  $("comboStat").textContent = profile.bestCombo;
+  $("runsStat").textContent = profile.runs;
 }
 function cleanTag(){ /* the tag is set on the start screen */ }
 /* Easy keeps notes at least .3s apart and drops chords; on built-in tracks the dropped notes still play in the song */
@@ -1105,7 +1126,13 @@ function prepChart(gid){
   });
   keep.backing = notes.backing; return keep;
 }
-function renderDiff(){ ["easy", "normal", "hard"].forEach(d => $("diff" + d[0].toUpperCase() + d.slice(1)).setAttribute("aria-checked", String(profile.diff === d))); renderKeys(GENRES[profile.genre]); renderLegend(); }
+function renderDiffDesc(){
+  const g = GENRES[profile.genre], six = g.nl === 6;
+  $("diffDesc").textContent = profile.diff === "easy" ? "Arrow keys · fewer notes, slower scroll"
+    : profile.diff === "normal" ? "Arrow keys · the full chart"
+    : six ? "Two hands · adds Shift for vocals and Space for bass" : "Arrow keys · full chart, faster scroll";
+}
+function renderDiff(){ renderDiffDesc(); ["easy", "normal", "hard"].forEach(d => $("diff" + d[0].toUpperCase() + d.slice(1)).setAttribute("aria-checked", String(profile.diff === d))); renderKeys(GENRES[profile.genre]); renderLegend(); }
 
 /* ---------- queue ---------- */
 let queueTimers = [];
@@ -1155,10 +1182,10 @@ async function startGame(gid, opp){
   const g = GENRES[gid], sd = 60 / g.bpm / 4, notes = prepChart(gid);
   const back = []; notes.backing.forEach(ev => (back[ev.gs] = back[ev.gs] || []).push(ev));
   game = { gid, g, opp, notes, back, totalHolds: notes.filter(n => n.dur).length, you:newPlayer(), cpu:newPlayer(), botIdx:0, popups:[], banners:[],
-    L: layoutOf(g), nl: layoutOf(g).nl, laneStem: laneStemOf(g), laneNames: laneNamesOf(g), held:[0,0,0,0,0,0], flash:[0,0,0,0,0,0], holds:[null,null,null,null,null,null], lead: profile.diff === "easy" ? 2.1 : 1.6, songStart: ac.currentTime + (g.audio ? .4 : .25), lat: ac.outputLatency || ac.baseLatency || 0, sd, bar: sd * 16, beat: sd * 4, end: TOTAL_BARS * sd * 16, running:true };
+    L: layoutOf(g), nl: layoutOf(g).nl, laneStem: laneStemOf(g), laneNames: laneNamesOf(g), held:[0,0,0,0,0,0], flash:[0,0,0,0,0,0], holds:[null,null,null,null,null,null], lead: profile.diff === "easy" ? 2.1 : profile.diff === "hard" && g.nl !== 6 ? 1.35 : 1.6, songStart: ac.currentTime + (g.audio ? .4 : .25), lat: ac.outputLatency || ac.baseLatency || 0, sd, bar: sd * 16, beat: sd * 4, end: TOTAL_BARS * sd * 16, running:true };
   $("gYou").textContent = profile.tag;
-  $("gOpp").textContent = opp ? opp.tag : "Solo practice";
-  $("gOppScore").textContent = opp ? "0" : "–";
+  $("gOpp").textContent = opp ? opp.tag : "Your best";
+  $("gOppScore").textContent = opp ? "0" : profile.best.toLocaleString();
   $("gOppCombo").hidden = !opp; $("meterFill").parentElement.hidden = !opp; $("gOppHeat").parentElement.hidden = !opp;
   $("gCrate").textContent = trackLine(g);
   game.beatOff = g.audio ? g.firstBeat : 0;
@@ -1440,6 +1467,8 @@ function finish(){
     title = "Track finished"; cls = "win";
     sub = `You hit ${hitsOf(you)} of ${total} notes and held ${you.streaks} of ${totalHolds} long notes.`;
   }
+  profile.runs++; store.set("runs", profile.runs);
+  if (you.max > profile.bestCombo){ profile.bestCombo = you.max; store.set("bestCombo", you.max); }
   if (you.score > profile.best){ profile.best = you.score; store.set("best", profile.best); sub += " New personal best."; }
   $("rTitle").textContent = title; $("rTitle").className = "res-title " + cls;
   $("rSub").textContent = sub;
@@ -1508,7 +1537,8 @@ function renderRecUi(){
   const on = !!REC.recorder, b = $("recBtn"), tg = $("recToggle");
   b.hidden = tg.hidden = !recSupported;
   b.setAttribute("aria-pressed", String(on)); if (!on) b.textContent = "● Rec";
-  tg.setAttribute("aria-pressed", String(REC.armed)); tg.textContent = REC.armed ? "Recording on" : "Record run";
+  $("recRow").hidden = !recSupported;
+  tg.setAttribute("aria-checked", String(!!REC.armed)); $("recState").textContent = REC.armed ? "ON" : "OFF"; $("recState").classList.toggle("on", !!REC.armed);
 }
 function renderClip(){
   const panel = $("clipPanel"), v = $("clipVideo"), hint = $("clipHint"), save = $("clipSave");
@@ -1619,8 +1649,8 @@ function stopCam(){
 }
 function renderCam(){
   const on = !!CAM.stream;
-  $("camToggle").setAttribute("aria-pressed", String(on));
-  $("camToggle").textContent = on ? "Face-cam on" : "Face-cam";
+  $("camToggle").setAttribute("aria-checked", String(on));
+  $("camState").textContent = on ? "ON" : "OFF"; $("camState").classList.toggle("on", on);
   $("camMini").hidden = !on;
 }
 async function toggleCam(){
@@ -1737,7 +1767,6 @@ async function makeSplit(){
 }
 
 /* ---------- wiring ---------- */
-$("findBtn").addEventListener("click", findMatch);
 $("soloBtn").addEventListener("click", () => { cleanTag(); startGame(profile.genre, null); });
 $("cancelBtn").addEventListener("click", () => { clearQueue(); show("lobby"); });
 $("quitBtn").addEventListener("click", quit);
@@ -1787,7 +1816,7 @@ window.addEventListener("keydown", e => {
 });
 window.addEventListener("resize", () => layoutDeck());
 try { document.fonts && document.fonts.ready.then(() => { [...$("ring").children].forEach((el, i) => { el.firstChild.src = coverArt(GENRES[deckIds[i]]); }); }); } catch(e){}
-renderCrates(); renderLegend(); renderRoster(); renderStats(); renderRecUi();
+renderCrates(); renderLegend(); renderStats(); renderRecUi(); renderDiffDesc();
 try { $("tag").focus(); } catch(e){}
 })();
 </script>
