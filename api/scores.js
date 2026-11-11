@@ -54,8 +54,8 @@ export default async function handler(req, res) {
       const ts = Date.now(), rand = Math.random().toString(36).slice(2, 8);
       const path = `lb/${track}/${diff}/${String(score).padStart(9, "0")}~${encodeURIComponent(tag)}~${ig ? encodeURIComponent(ig) : "-"}~${acc}~${combo}~${ts}~${rand}.json`;
       const body = JSON.stringify({ track, diff, tag, ig, score, acc: acc / 10, combo, ts });
-      try { await put(path, body, { access: "public", contentType: "application/json", addRandomSuffix: false }); }
-      catch (e) { await put(path, body, { access: "private", contentType: "application/json", addRandomSuffix: false }); }
+      try { await put(path, body, { access: "private", contentType: "application/json", addRandomSuffix: false }); }
+      catch (e) { await put(path, body, { access: "public", contentType: "application/json", addRandomSuffix: false }); }
       const all = await board(track, diff);
       return res.status(200).json({ ok: true, rank: all.findIndex(r => r.tag.toLowerCase() === tag.toLowerCase()) + 1, total: all.length });
     }
