@@ -284,6 +284,8 @@ kbd{font-family:var(--mono);font-size:12px;background:rgba(0,0,0,.4);border:1px 
 @media (max-width:520px){.clip-body{grid-template-columns:1fr}}
 .clip video{width:100%;max-width:100%;aspect-ratio:9/16;border-radius:12px;background:#000;display:block}
 .clip .side-info{display:grid;gap:12px;align-content:start;min-width:0}
+.clip-len{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.ig-btn::before{content:"";display:inline-block;width:14px;height:14px;margin-right:8px;vertical-align:-2px;border-radius:4px;border:2px solid currentColor;box-sizing:border-box;background:radial-gradient(circle,transparent 0 2.5px,currentColor 2.6px 3.8px,transparent 3.9px)}
 .face{display:grid;gap:10px;padding-top:14px;border-top:1px solid var(--line)}
 .sync{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-family:var(--mono);font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
 .sync b{font-weight:400;color:var(--text);min-width:58px;text-align:center;font-variant-numeric:tabular-nums}
@@ -582,7 +584,9 @@ kbd{background:var(--pearl);color:var(--text);border:1px solid rgba(140,120,110,
         <video id="clipVideo" controls playsinline hidden></video>
         <div class="side-info">
           <div class="hint" id="clipHint">Finishing your clip…</div>
-          <div class="actions"><button class="btn primary" id="clipSave" hidden>Save clip</button></div>
+          <div class="clip-len" id="clipLenRow" hidden><span class="label">Length</span><div class="seg" role="radiogroup" aria-label="Clip length"><button type="button" role="radio" id="lenFull" aria-checked="true">Full run</button><button type="button" role="radio" id="lenShort" aria-checked="false">15 sec</button></div></div>
+          <div class="fprog" id="shortProgWrap" hidden><i id="shortProg"></i></div>
+          <div class="actions"><button class="btn primary" id="clipSave" hidden>Save clip</button><button class="btn ig-btn" id="clipIG" type="button" hidden>Share to IG Story</button></div>
           <div class="face" id="facePanel" hidden>
             <span class="label">Split-screen with you</span>
             <p class="hint" id="faceHint">Film yourself playing on your phone with the sound on, then add that video. The game lines it up with your run by listening for the song.</p>
@@ -1774,7 +1778,7 @@ function startRec(){
     if (recDest) recDest.stream.getAudioTracks().forEach(tr => stream.addTrack(tr));
     rec = new MediaRecorder(stream, mime ? { mimeType: mime, videoBitsPerSecond: 3000000 } : undefined);
   } catch(e){ return; }
-  REC.chunks = []; REC.ext = ext; REC.t0 = performance.now(); REC.keep = true; REC.gid = game.gid; REC.hadCam = !!CAM.stream;
+  REC.chunks = []; REC.ext = ext; REC.t0 = performance.now(); REC.keep = true; REC.gid = game.gid; REC.hadCam = !!CAM.stream; REC.songAt = songTime();
   rec.ondataavailable = e => { if (e.data && e.data.size) REC.chunks.push(e.data); };
   REC.dur = 0;
   rec.onstop = () => {
@@ -1797,6 +1801,7 @@ function stopRec(keep){
 function clearClip(){
   if (REC.url) URL.revokeObjectURL(REC.url); REC.url = null; REC.blob = null;
   if (REC.split) URL.revokeObjectURL(REC.split.url); REC.split = null;
+  if (REC.short) URL.revokeObjectURL(REC.short.url); REC.short = null; REC.len = "full";
   if (FACE.url) URL.revokeObjectURL(FACE.url); FACE.file = null; FACE.url = null; FACE.offset = 0; FACE.busy = false;
   const v = $("clipVideo"); v.removeAttribute("src"); v.load();
 }
@@ -1808,38 +1813,107 @@ function renderRecUi(){
   tg.setAttribute("aria-checked", String(!!REC.armed)); $("recState").textContent = REC.armed ? "ON" : "OFF"; $("recState").classList.toggle("on", !!REC.armed);
 }
 function renderClip(){
-  const panel = $("clipPanel"), v = $("clipVideo"), hint = $("clipHint"), save = $("clipSave");
+  const panel = $("clipPanel"), v = $("clipVideo"), hint = $("clipHint"), save = $("clipSave"), ig = $("clipIG"), lenRow = $("clipLenRow");
   panel.hidden = !(REC.pending || REC.blob);
-  if (REC.pending){ v.hidden = true; save.hidden = true; hint.textContent = "Finishing your clip…"; return; }
+  if (REC.pending){ v.hidden = true; save.hidden = ig.hidden = lenRow.hidden = true; hint.textContent = "Finishing your clip…"; return; }
   if (!REC.blob) return;
-  const shown = REC.split || REC;
+  const shown = shownClip();
   if (v.getAttribute("src") !== shown.url){ v.src = shown.url; }
   v.hidden = false;
-  const canSave = !!downloadsNS || !inClaude;
-  save.hidden = !canSave;
-  save.textContent = REC.split || REC.hadCam ? "Save split-screen clip" : "Save clip";
-  const mb = (shown.blob.size / 1048576).toFixed(1);
-  hint.textContent = (REC.split || REC.hadCam ? `Split-screen 720×1280 ${shown.ext.toUpperCase()}: your run on top, you on the bottom · ${mb} MB.` : `Vertical 720×1280 ${REC.ext.toUpperCase()} with game audio · ${mb} MB.`) + (canSave ? " Save it to post or keep." : " Saving files isn't available in this view.");
+  lenRow.hidden = (REC.dur || 0) <= SHORT_LEN + 1;
+  $("lenFull").setAttribute("aria-checked", String(REC.len !== "short")); $("lenShort").setAttribute("aria-checked", String(REC.len === "short"));
+  const share = canShareFiles(), canSave = !!downloadsNS || !inClaude;
+  save.hidden = !canSave; ig.hidden = inClaude;
+  save.disabled = ig.disabled = REC.shortBusy;
+  save.textContent = share ? "Save to camera roll" : (REC.split || REC.hadCam ? "Save split-screen clip" : "Save clip");
+  if (REC.shortBusy){ hint.textContent = "Making your 15-second clip from the best part of your run. It plays through once, so keep this tab open."; renderFace(); return; }
+  const mb = (shown.blob.size / 1048576).toFixed(1), len = shown === REC.short ? "15-second" : "Full-run";
+  const what = REC.split || REC.hadCam ? `${len} split-screen 720×1280 ${shown.ext.toUpperCase()}: your run on top, you on the bottom · ${mb} MB.` : `${len} vertical 720×1280 ${shown.ext.toUpperCase()} with game audio · ${mb} MB.`;
+  hint.textContent = what + (!canSave ? " Saving files isn't available in this view." : share ? " Save it to your camera roll or send it straight to your Story." : " Save it to post or keep.");
   renderFace();
 }
 async function saveClip(){
-  if (!REC.blob) return;
-  if (!downloadsNS){
-    if (inClaude) return;
-    const shown = REC.split || REC, a = document.createElement("a"), d = new Date();
-    a.href = URL.createObjectURL(shown.blob); a.download = `mini-mania-${REC.gid || "run"}-${d.getTime()}${REC.split || REC.hadCam ? "-split" : ""}.${shown.ext}`;
-    document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000);
-    $("clipHint").textContent = "Clip downloaded."; return;
-  }
-  const hint = $("clipHint"), d = new Date(), stamp = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2,"0")}${String(d.getDate()).padStart(2,"0")}-${String(d.getHours()).padStart(2,"0")}${String(d.getMinutes()).padStart(2,"0")}`;
-  try {
-    const shown = REC.split || REC;
-    await downloadsNS.save({ filename: `mini-mania-${REC.gid || "run"}-${stamp}${REC.split ? "-split" : ""}.${shown.ext}`, data: shown.blob });
-    hint.textContent = "Clip saved.";
-  } catch(e){
+  if (!REC.blob || REC.shortBusy) return;
+  if (canShareFiles()) return shareClip(false);
+  const shown = shownClip(), hint = $("clipHint");
+  if (!downloadsNS){ if (inClaude) return; downloadClip(shown); hint.textContent = "Clip downloaded."; return; }
+  try { await downloadsNS.save({ filename: clipName(shown), data: shown.blob }); hint.textContent = "Clip saved."; }
+  catch(e){
     const code = e && e.code;
-    hint.textContent = code === "declined" ? "Save canceled. Your clip is still here." : code === "rate_limited" ? "Another save prompt is open. Try again in a moment." : code === "too_large" ? "This clip is too large to save here. Try a shorter recording." : "This clip can't be saved in this view.";
+    hint.textContent = code === "declined" ? "Save canceled. Your clip is still here." : code === "rate_limited" ? "Another save prompt is open. Try again in a moment." : code === "too_large" ? "This clip is too large to save here. Try the 15-second version." : "This clip can't be saved in this view.";
   }
+}
+/* ---------- clip length, camera roll and Instagram Story sharing ---------- */
+const SHORT_LEN = 15;
+REC.len = "full"; REC.short = null; REC.shortBusy = false;
+const fullClip = () => REC.split || REC;
+const shownClip = () => (REC.len === "short" && REC.short) ? REC.short : fullClip();
+const clipName = (c) => { const d = new Date(), stamp = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2,"0")}${String(d.getDate()).padStart(2,"0")}-${String(d.getHours()).padStart(2,"0")}${String(d.getMinutes()).padStart(2,"0")}`;
+  return `mini-mania-${REC.gid || "run"}-${stamp}${REC.split || REC.hadCam ? "-split" : ""}${c === REC.short ? "-15s" : ""}.${c.ext}`; };
+const clipFile = c => { try { return new File([c.blob], clipName(c), { type: c.ext === "mp4" ? "video/mp4" : "video/webm" }); } catch(e){ return null; } };
+function canShareFiles(){
+  if (inClaude || !navigator.share || !navigator.canShare) return false;
+  try { return navigator.canShare({ files: [new File([new Blob(["x"], { type: "video/mp4" })], "t.mp4", { type: "video/mp4" })] }); } catch(e){ return false; }
+}
+// the 15 seconds with the most notes you landed
+function bestWindow(){
+  const dur = REC.dur || 60; if (dur <= SHORT_LEN + .5) return 0;
+  const p = lastMatch && lastMatch.you, ts = p ? p.rec.hits.map(h => h.t).concat(p.rec.holds.map(h => h.t)) : [];
+  const off = REC.songAt || 0; let best = 0, bestN = -1;
+  for (let s = 0; s <= dur - SHORT_LEN - .3; s += .5){ const n = ts.filter(t => t - off >= s && t - off < s + SHORT_LEN).length; if (n > bestN){ bestN = n; best = s; } }
+  return best;
+}
+async function makeShort(){
+  const src = fullClip(); if (!src || !src.url || REC.shortBusy) return;
+  REC.shortBusy = true; renderClip();
+  const wrap = $("shortProgWrap"), bar = $("shortProg"); wrap.hidden = false; bar.style.width = "0%";
+  const start = bestWindow(), W = 720, H = 1280, cvs = document.createElement("canvas"); cvs.width = W; cvs.height = H; const c = cvs.getContext("2d");
+  const v = document.createElement("video"); v.src = src.url; v.playsInline = true; v.preload = "auto";
+  let timer, stream;
+  try {
+    await initAudio(); await mediaReady(v);
+    const dest = ac.createMediaStreamDestination(), gn = ac.createGain(); ac.createMediaElementSource(v).connect(gn); gn.connect(dest);
+    stream = cvs.captureStream(30); dest.stream.getAudioTracks().forEach(tr => stream.addTrack(tr));
+    const [mime, ext] = pickMime(), rec = new MediaRecorder(stream, mime ? { mimeType: mime, videoBitsPerSecond: 4000000 } : undefined), chunks = [];
+    rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
+    const done = new Promise(res => { rec.onstop = res; });
+    v.currentTime = start; await new Promise(r => v.addEventListener("seeked", r, { once:true }));
+    gn.gain.setValueAtTime(0, ac.currentTime); gn.gain.linearRampToValueAtTime(1, ac.currentTime + .08);
+    rec.start(250); await v.play();
+    let fading = false;
+    const draw = () => {
+      c.drawImage(v, 0, 0, W, H); const el = v.currentTime - start;
+      bar.style.width = Math.min(100, el / SHORT_LEN * 100) + "%";
+      if (!fading && el >= SHORT_LEN - .6){ fading = true; gn.gain.setValueAtTime(1, ac.currentTime); gn.gain.linearRampToValueAtTime(0, ac.currentTime + .55); }
+      if (el >= SHORT_LEN || v.ended){ clearInterval(timer); v.pause(); if (rec.state !== "inactive") rec.stop(); }
+    };
+    timer = setInterval(draw, 1000 / 30); draw();
+    await done; stream.getTracks().forEach(tr => tr.stop());
+    const blob = new Blob(chunks, { type: rec.mimeType || (ext === "mp4" ? "video/mp4" : "video/webm") });
+    if (REC.short) URL.revokeObjectURL(REC.short.url);
+    REC.short = { blob, url: URL.createObjectURL(blob), ext, start };
+  } catch(e){ clearInterval(timer); try { v.pause(); } catch(_){} REC.len = "full"; $("clipHint").textContent = "Couldn't make the 15-second version. The full clip is still here."; }
+  REC.shortBusy = false; wrap.hidden = true; renderClip();
+}
+function setClipLen(len){
+  REC.len = len;
+  if (len === "short" && !REC.short && !REC.shortBusy) makeShort();
+  renderClip();
+}
+function downloadClip(c){
+  const a = document.createElement("a"); a.href = URL.createObjectURL(c.blob); a.download = clipName(c);
+  document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000);
+}
+async function shareClip(toStory){
+  const c = shownClip(), hint = $("clipHint"); if (!c || !c.blob) return;
+  const f = clipFile(c);
+  if (f && canShareFiles() && navigator.canShare({ files: [f] })){
+    try { await navigator.share({ files: [f] }); hint.textContent = toStory ? "Sent. In Instagram, choose Story to post it." : "Done. Pick “Save Video” in the menu to put it in your camera roll."; }
+    catch(e){ hint.textContent = e && e.name === "AbortError" ? "Share canceled. Your clip is still here." : "Sharing didn't work here, so the clip was downloaded instead."; if (!(e && e.name === "AbortError")) downloadClip(c); }
+    return;
+  }
+  downloadClip(c);
+  hint.textContent = toStory ? "Clip downloaded. Instagram only takes Stories from its app: send the clip to your phone (AirDrop, Messages or Drive), then post it from Instagram." : "Clip downloaded.";
 }
 const SPLIT_Y = 640;
 function drawRec(t){
@@ -2095,6 +2169,7 @@ async function makeSplit(){
       stream.getTracks().forEach(tr => tr.stop());
       const blob = new Blob(chunks, { type: rec.mimeType || (ext === "mp4" ? "video/mp4" : "video/webm") });
       REC.split = { blob, url: URL.createObjectURL(blob), ext };
+      if (REC.short){ URL.revokeObjectURL(REC.short.url); REC.short = null; } if (REC.len === "short") setTimeout(makeShort, 50);
       FACE.busy = false; wrap.hidden = true; hint.textContent = "Done. The preview now shows your split-screen clip.";
       renderClip();
     };
@@ -2148,6 +2223,9 @@ renderDiff();
 $("recToggle").addEventListener("click", () => { REC.armed = !REC.armed; store.set("rec", REC.armed); renderRecUi(); });
 $("recBtn").addEventListener("click", () => { if (REC.recorder) stopRec(true); else startRec(); });
 $("clipSave").addEventListener("click", saveClip);
+$("clipIG").addEventListener("click", () => { if (!REC.shortBusy) shareClip(true); });
+$("lenFull").addEventListener("click", () => setClipLen("full"));
+$("lenShort").addEventListener("click", () => setClipLen("short"));
 $("faceFile").addEventListener("change", e => { addFace(e.target.files && e.target.files[0]); e.target.value = ""; });
 $("faceMake").addEventListener("click", makeSplit);
 $("camToggle").addEventListener("click", toggleCam);
