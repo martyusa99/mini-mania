@@ -15,15 +15,21 @@ function parse(pathname) {
   return { score: +score, tag: decodeURIComponent(tag), ig: ig === "-" ? "" : decodeURIComponent(ig), acc: +acc / 10, combo: +combo, ts: +ts };
 }
 
-async function board(track, diff) {
+async function runs(prefix) {
   const rows = [];
   let cursor;
-  for (let page = 0; page < 10; page++) {
-    const r = await list({ prefix: `lb/${track}/${diff}/`, cursor, limit: 1000 });
-    for (const b of r.blobs) { try { rows.push(parse(b.pathname)); } catch (e) {} }
+  for (let page = 0; page < 20; page++) {
+    const r = await list({ prefix, cursor, limit: 1000 });
+    for (const b of r.blobs) {
+      try { const [, track, diff] = b.pathname.split("/"); if (TRACKS.has(track) && DIFFS.has(diff)) rows.push({ track, diff, ...parse(b.pathname) }); } catch (e) {}
+    }
     if (!r.hasMore) break;
     cursor = r.cursor;
   }
+  return rows;
+}
+async function board(track, diff) {
+  const rows = await runs(`lb/${track}/${diff}/`);
   const best = new Map();
   for (const r of rows) {
     const k = r.tag.toLowerCase(), cur = best.get(k);
@@ -36,12 +42,19 @@ export default async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
   try {
     if (req.method === "GET") {
+      const tag = clean(req.query.tag, 20).toLowerCase();
+      const offset = Math.max(0, Math.min(100000, parseInt(req.query.offset, 10) || 0)), limit = Math.max(1, Math.min(100, parseInt(req.query.limit, 10) || 10));
+      if (req.query.scope === "all") {
+        // every play on every song and difficulty, highest score first
+        const all = (await runs("lb/")).sort((a, b) => b.score - a.score || a.ts - b.ts);
+        const i = tag ? all.findIndex(r => r.tag.toLowerCase() === tag) : -1;
+        return res.status(200).json({ top: all.slice(offset, offset + limit), offset, total: all.length, you: i >= 0 ? { rank: i + 1, ...all[i] } : null });
+      }
       const track = String(req.query.track || ""), diff = String(req.query.diff || "");
       if (!TRACKS.has(track) || !DIFFS.has(diff)) return res.status(400).json({ error: "Unknown track or difficulty." });
       const all = await board(track, diff);
-      const tag = clean(req.query.tag, 20).toLowerCase();
       const i = tag ? all.findIndex(r => r.tag.toLowerCase() === tag) : -1;
-      return res.status(200).json({ top: all.slice(0, 10), total: all.length, you: i >= 0 ? { rank: i + 1, ...all[i] } : null });
+      return res.status(200).json({ top: all.slice(offset, offset + limit), offset, total: all.length, you: i >= 0 ? { rank: i + 1, ...all[i] } : null });
     }
     if (req.method === "POST") {
       const b = typeof req.body === "string" ? JSON.parse(req.body || "{}") : (req.body || {});

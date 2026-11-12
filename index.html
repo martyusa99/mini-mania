@@ -177,6 +177,11 @@ kbd{font-family:var(--mono);font-size:12px;background:rgba(0,0,0,.4);border:1px 
 .ig-link:hover{text-decoration:underline}
 .lb .block-head{flex-direction:column;align-items:flex-start;gap:4px}
 .lb-list{list-style:none;margin:0;padding:0;display:grid}
+.lb-tabs{margin:2px 0 2px}
+.lb-tabs button{padding:6px 12px;font-size:11px}
+.lb-list .sub{display:block;font-size:10px;letter-spacing:.06em;color:var(--dim);margin-top:2px;white-space:normal;line-height:1.35}
+.lb-more{justify-self:start;margin-top:8px}
+.lb-list{max-height:520px;overflow-y:auto}
 .lb-list li{display:grid;grid-template-columns:30px minmax(0,1fr) auto;gap:10px;align-items:baseline;padding:8px 6px;border-bottom:1px solid var(--line);font-family:var(--mono);font-size:14px}
 .lb-list li:last-child{border-bottom:0}
 .lb-list .rk{color:var(--dim);font-variant-numeric:tabular-nums}
@@ -551,8 +556,11 @@ kbd{background:var(--pearl);color:var(--text);border:1px solid rgba(140,120,110,
     </div>
     <aside class="side-col">
       <div class="panel lb">
-        <div class="block-head"><h2>Leaderboard</h2><span class="label" id="lbScope"></span></div>
+        <div class="block-head"><h2>Leaderboard</h2>
+          <div class="seg lb-tabs" role="radiogroup" aria-label="Leaderboard"><button type="button" role="radio" id="lbSong" aria-checked="true">This song</button><button type="button" role="radio" id="lbAll" aria-checked="false">All plays</button></div>
+          <span class="label" id="lbScope"></span></div>
         <ol class="lb-list" id="lbList"></ol>
+        <button class="link lb-more" id="lbMore" type="button" hidden>Show more</button>
         <p class="hint" id="lbNote"></p>
       </div>
       <details class="panel how">
@@ -2068,7 +2076,17 @@ function drawRecGel(t){
   // 2. the note highway over you: screen-blended so the dark lanes vanish and only notes, pads and light remain
   if (cv.width > 1){
     const sc = W / cv.width, dh = cv.height * sc, dy = H - 190 - dh;
-    c.save(); c.globalCompositeOperation = "screen"; c.globalAlpha = .9; c.drawImage(cv, 0, dy, W, dh);
+    // a soft navy veil behind the lanes so the note colours read in front of the face
+    c.save(); c.globalCompositeOperation = "multiply";
+    const veil = c.createLinearGradient(0, dy, 0, dy + dh); veil.addColorStop(0, "rgba(255,255,255,1)"); veil.addColorStop(.4, "rgba(150,160,215,1)"); veil.addColorStop(1, "rgba(120,130,200,1)");
+    c.fillStyle = veil; c.fillRect(0, dy, W, dh); c.restore();
+    // the lanes at full strength, then a glow pass that lifts the note colours
+    if (!GEL.hw) GEL.hw = document.createElement("canvas");
+    const hw = GEL.hw, hh = Math.max(1, Math.round(dh)); if (hw.width !== W || hw.height !== hh){ hw.width = W; hw.height = hh; }
+    const hx = hw.getContext("2d"); hx.globalCompositeOperation = "source-over"; hx.clearRect(0, 0, W, hh); hx.drawImage(cv, 0, 0, W, hh);
+    hx.globalCompositeOperation = "destination-in"; const m = hx.createLinearGradient(0, 0, 0, hh * .4); m.addColorStop(0, "rgba(0,0,0,0)"); m.addColorStop(1, "rgba(0,0,0,1)"); hx.fillStyle = m; hx.fillRect(0, 0, W, hh);
+    c.save(); c.globalCompositeOperation = "screen"; c.drawImage(hw, 0, dy);
+    c.globalCompositeOperation = "lighter"; c.globalAlpha = .35; c.drawImage(hw, 0, dy);
     c.restore();
   }
   // floating blobjects, swelling on the beat
@@ -2167,33 +2185,45 @@ function lbRow(r, rank, me){
   const who = document.createElement("span"); who.className = "who";
   if (r.ig){ const a = document.createElement("a"); a.href = igUrl(r.ig); a.target = "_blank"; a.rel = "noopener noreferrer nofollow"; a.textContent = "@" + r.tag; a.title = "instagram.com/" + r.ig; who.appendChild(a); const i = document.createElement("span"); i.className = "ig"; i.textContent = "IG"; who.appendChild(i); }
   else who.textContent = "@" + r.tag;
+  if (r.track && GENRES[r.track]){ const sub = document.createElement("span"); sub.className = "sub"; sub.textContent = `${GENRES[r.track].name} · ${DIFF_NAME[r.diff] || r.diff}`; who.appendChild(sub); }
   const sc = document.createElement("span"); sc.className = "sc"; sc.textContent = Number(r.score).toLocaleString();
   const sm = document.createElement("small"); sm.textContent = `${r.acc}% · ${r.combo}x`; sc.appendChild(sm);
   li.append(rk, who, sc); return li;
 }
-async function loadBoard(){
-  const g = GENRES[profile.genre], list = $("lbList"), note = $("lbNote"), seq = ++lbSeq;
-  $("lbScope").textContent = `${g.name} · ${DIFF_NAME[profile.diff]}`;
-  if (inClaude){ list.textContent = ""; note.textContent = "The leaderboard lives on the MINI MANIA website, where your runs are saved."; return; }
-  note.textContent = "Loading…";
+const LB_PAGE = 25;
+let lbMode = store.get("lbMode", "song") === "all" ? "all" : "song", lbShown = 0;
+async function loadBoard(more){
+  const g = GENRES[profile.genre], list = $("lbList"), note = $("lbNote"), moreBtn = $("lbMore"), seq = ++lbSeq, all = lbMode === "all";
+  $("lbSong").setAttribute("aria-checked", String(!all)); $("lbAll").setAttribute("aria-checked", String(all));
+  $("lbScope").textContent = all ? "Every song · every level" : `${g.name} · ${DIFF_NAME[profile.diff]}`;
+  if (inClaude){ list.textContent = ""; moreBtn.hidden = true; note.textContent = "The leaderboard lives on the MINI MANIA website, where your runs are saved."; return; }
+  if (!more){ lbShown = 0; note.textContent = "Loading…"; } else moreBtn.disabled = true;
   try {
-    const me = profile.tag.replace(/^@/, "");
-    const r = await fetch(`api/scores?track=${encodeURIComponent(profile.genre)}&diff=${profile.diff}&tag=${encodeURIComponent(me)}`, { cache: "no-store" });
+    const me = profile.tag.replace(/^@/, ""), first = more ? lbShown : 0, limit = more ? LB_PAGE : (all ? LB_PAGE : 10);
+    const q = all ? "scope=all" : `track=${encodeURIComponent(profile.genre)}&diff=${profile.diff}`;
+    const r = await fetch(`api/scores?${q}&tag=${encodeURIComponent(me)}&offset=${first}&limit=${limit}`, { cache: "no-store" });
     const data = await r.json();
     if (seq !== lbSeq) return;
     if (!r.ok) throw new Error(data.error || "error");
-    list.textContent = "";
-    data.top.forEach((row, i) => list.appendChild(lbRow(row, i + 1, row.tag.toLowerCase() === me.toLowerCase())));
-    if (data.you && data.you.rank > data.top.length){
+    if (!more) list.textContent = ""; else list.querySelectorAll(".gap, .tail").forEach(el => el.remove());
+    data.top.forEach((row, i) => list.appendChild(lbRow(row, first + i + 1, row.tag.toLowerCase() === me.toLowerCase())));
+    lbShown = first + data.top.length;
+    if (data.you && data.you.rank > lbShown){
       const gap = document.createElement("li"); gap.className = "gap"; gap.textContent = "···"; list.appendChild(gap);
-      list.appendChild(lbRow(data.you, data.you.rank, true));
+      const yr = lbRow(data.you, data.you.rank, true); yr.classList.add("tail"); list.appendChild(yr);
     }
-    note.textContent = data.total ? `${data.total} producer${data.total === 1 ? "" : "s"} on this board. Tags with IG link to Instagram.` : `No scores on ${DIFF_NAME[profile.diff]} yet. Play a run to take #1.`;
+    moreBtn.hidden = lbShown >= data.total; moreBtn.disabled = false;
+    note.textContent = !data.total ? (all ? "No plays yet. Play a run to start the board." : `No scores on ${DIFF_NAME[profile.diff]} yet. Play a run to take #1.`)
+      : all ? `${data.total} play${data.total === 1 ? "" : "s"} so far, highest score first. Tags with IG link to Instagram.`
+      : `${data.total} producer${data.total === 1 ? "" : "s"} on this board. Tags with IG link to Instagram.`;
   } catch(e){
     if (seq !== lbSeq) return;
-    list.textContent = ""; note.textContent = "Couldn't load the leaderboard. Try again in a moment.";
+    moreBtn.disabled = false; if (!more){ list.textContent = ""; moreBtn.hidden = true; } note.textContent = "Couldn't load the leaderboard. Try again in a moment.";
   }
 }
+$("lbSong").addEventListener("click", () => { lbMode = "song"; store.set("lbMode", "song"); loadBoard(); });
+$("lbAll").addEventListener("click", () => { lbMode = "all"; store.set("lbMode", "all"); loadBoard(); });
+$("lbMore").addEventListener("click", () => loadBoard(true));
 async function submitScore(gid, diff, p, accPct){
   const el = $("rRank"); el.hidden = true;
   if (inClaude || !GENRES[gid] || !GENRES[gid].audio) return;
