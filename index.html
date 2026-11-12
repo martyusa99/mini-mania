@@ -3,7 +3,25 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="description" content="MINI MANIA: a keyboard rhythm game. Hit the notes, keep every part of the song playing, and record a split-screen clip with your face-cam.">
+<meta name="description" content="Keyboard beat battles. Hit the notes, keep every part of the song playing, and post your run as a Gel clip or score card.">
+<meta name="theme-color" content="#2a6ae0">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/site.webmanifest">
+<link rel="canonical" href="https://mini-mania-eosin.vercel.app/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="MINI MANIA">
+<meta property="og:title" content="MINI MANIA · keyboard beat battles">
+<meta property="og:description" content="Keyboard beat battles. Hit the notes, keep every part of the song playing, and post your run as a Gel clip or score card.">
+<meta property="og:url" content="https://mini-mania-eosin.vercel.app/">
+<meta property="og:image" content="https://mini-mania-eosin.vercel.app/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="The MINI MANIA chrome logo over a blue Y2K sky, with a fan of track covers">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="MINI MANIA · keyboard beat battles">
+<meta name="twitter:description" content="Keyboard beat battles. Hit the notes, keep every part of the song playing, and post your run as a Gel clip or score card.">
+<meta name="twitter:image" content="https://mini-mania-eosin.vercel.app/og.jpg">
 <style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)} body{margin:0;font-size:14px} img{max-width:100%} [hidden]{display:none!important}</style>
 </head>
 <body>
@@ -296,6 +314,12 @@ kbd{font-family:var(--mono);font-size:12px;background:rgba(0,0,0,.4);border:1px 
 @media (max-width:520px){.clip-body{grid-template-columns:1fr}}
 .clip video{width:100%;max-width:100%;aspect-ratio:9/16;border-radius:12px;background:#000;display:block}
 .clip .side-info{display:grid;gap:12px;align-content:start;min-width:0}
+.cards{display:grid;gap:8px}
+.card-thumbs{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap}
+.card-thumb{display:grid;gap:6px;justify-items:center;padding:6px;border:1px solid rgba(120,160,255,.35);border-radius:12px;background:rgba(255,255,255,.55);cursor:pointer;font:600 11px/1 var(--mono);letter-spacing:.08em;color:#1b2f74;transition:transform .15s,box-shadow .15s}
+.card-thumb:hover,.card-thumb:focus-visible{transform:translateY(-2px);box-shadow:0 8px 20px -6px rgba(8,40,120,.45)}
+.card-thumb img{display:block;border-radius:8px;width:92px;height:auto}
+.card-thumb.post img{width:118px}
 .clip-len{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 /* hovering a clip style pops up a frame of what that clip looks like */
 .style-ctl{position:relative}
@@ -631,6 +655,14 @@ kbd{background:var(--pearl);color:var(--text);border:1px solid rgba(140,120,110,
           <div class="clip-len" id="clipLenRow" hidden><span class="label">Length</span><div class="seg" role="radiogroup" aria-label="Clip length"><button type="button" role="radio" id="lenFull" aria-checked="true">Full run</button><button type="button" role="radio" id="lenShort" aria-checked="false">15 sec</button></div></div>
           <div class="fprog" id="shortProgWrap" hidden><i id="shortProg"></i></div>
           <div class="actions"><button class="btn primary" id="clipSave" hidden>Save clip</button><button class="btn ig-btn" id="clipIG" type="button" hidden>Share to IG Story</button><a class="btn primary ig-btn" id="clipIGOpen" hidden>Open Instagram Story</a></div>
+          <div class="cards" id="cardRow" hidden>
+            <span class="label">Score card</span>
+            <div class="card-thumbs">
+              <button type="button" class="card-thumb story" id="cardStory" aria-label="Save Story score card"><img id="cardStoryImg" alt=""><span>Story · 9:16</span></button>
+              <button type="button" class="card-thumb post" id="cardPost" aria-label="Save post score card"><img id="cardPostImg" alt=""><span>Post · 4:5</span></button>
+            </div>
+            <p class="hint" id="cardHint">Tap a card to save it, then post it to your feed or Story.</p>
+          </div>
           <div class="face" id="facePanel" hidden>
             <span class="label">Split-screen with you</span>
             <p class="hint" id="faceHint">Film yourself playing on your phone with the sound on, then add that video. The game lines it up with your run by listening for the song.</p>
@@ -1761,7 +1793,7 @@ function frame(){
     if (!n.judged && n.t < t - WIN.good){ n.judged = true; n.state = n.dur ? "dropped" : null; award(game.you, "miss", true); gate(n.lane, false); popup("miss", n.lane); }
   }
   holdTick(t); botStep(t); updateHud(t); draw(t);
-  if (REC.recorder) drawRec(t);
+  if (REC.recorder){ REC.grabNow = heroWant(t); drawRec(t); if (REC.grabNow) heroGrab(); }
   if (t > game.end) return finish();
   raf = requestAnimationFrame(frame);
 }
@@ -1918,6 +1950,8 @@ function finish(){
     sub = `You hit ${hitsOf(you)} of ${total} notes and held ${you.streaks} of ${totalHolds} long notes.`;
   }
   profile.runs++; store.set("runs", profile.runs);
+  { const hit = you.counts.perfect + you.counts.great + you.counts.good, a = total ? (you.counts.perfect + you.counts.great * .8 + you.counts.good * .5) / total * 100 : 0;
+    REC.card = REC.hero ? { gid, diff: profile.diff, score: you.score, acc: a, max: you.max, hits: hit, total, best: you.score > profile.best } : null; if (REC.card) buildCards(); }
   submitScore(gid, profile.diff, you, total ? Math.round((you.counts.perfect + you.counts.great * .8 + you.counts.good * .5) / total * 1000) / 10 : 0);
   if (you.max > profile.bestCombo){ profile.bestCombo = you.max; store.set("bestCombo", you.max); }
   if (you.score > profile.best){ profile.best = you.score; store.set("best", profile.best); sub += " New personal best."; }
@@ -1957,6 +1991,7 @@ function startRec(){
     if (recDest) recDest.stream.getAudioTracks().forEach(tr => stream.addTrack(tr));
     rec = new MediaRecorder(stream, mime ? { mimeType: mime, videoBitsPerSecond: 3000000 } : undefined);
   } catch(e){ return; }
+  REC.hero = null; REC.heroCam = null; REC.heroCombo = -1; REC.heroAt = 0; REC.card = null; clearCards();
   REC.chunks = []; REC.ext = ext; REC.t0 = performance.now(); REC.keep = true; REC.gid = game.gid; REC.hadCam = !!CAM.stream; REC.songAt = songTime();
   REC.styleUsed = REC.style; GEL.shown = 0; GEL.last = 0; GEL.pops = [];
   rec.ondataavailable = e => { if (e.data && e.data.size) REC.chunks.push(e.data); };
@@ -1968,7 +2003,7 @@ function startRec(){
       REC.blob = new Blob(REC.chunks, { type: rec.mimeType || (ext === "mp4" ? "video/mp4" : "video/webm") });
       REC.url = URL.createObjectURL(REC.blob);
     }
-    REC.chunks = []; REC.pending = false; renderClip();
+    REC.chunks = []; REC.pending = false; renderClip(); renderCards();
     if (REC.blob && REC.len === "short" && (REC.dur || 0) > SHORT_LEN + 1) makeShort();
   };
   rec.start(250); REC.recorder = rec; renderRecUi();
@@ -2028,6 +2063,137 @@ async function saveClip(){
     const code = e && e.code;
     hint.textContent = code === "declined" ? "Save canceled. Your clip is still here." : code === "rate_limited" ? "Another save prompt is open. Try again in a moment." : code === "too_large" ? "This clip is too large to save here. Try the 15-second version." : "This clip can't be saved in this view.";
   }
+}
+/* ---------- score cards: still images for an IG post (4:5) and Story (9:16), in the clip style you recorded ---------- */
+// while recording, keep a copy of the frame where your combo peaks (pads lit, notes flying)
+function heroWant(t){
+  const p = game && game.you; if (!p || !REC.canvas) return false;
+  const now = performance.now(), lit = game.flash.some(f => now - f < 90);
+  const better = p.combo > REC.heroCombo && p.combo >= 6 && lit && now - REC.heroAt > 1200;
+  const fallback = !REC.hero && t - (game.g.firstBeat || 0) > 8 && lit;
+  return better || fallback;
+}
+// the Gel frame is copied before its score and producer cards go on, so the still gets clean final ones
+function heroGrab(){
+  const p = game.you, now = performance.now(); REC.grabNow = false;
+  if (!REC.hero){ REC.hero = document.createElement("canvas"); REC.hero.width = 720; REC.hero.height = 1280; }
+  REC.hero.getContext("2d").drawImage(REC.canvas, 0, 0);
+  const cam = $("camLive");
+  if (REC.styleUsed !== "gel" && CAM.stream && cam.readyState >= 2 && cam.videoWidth){
+    if (!REC.heroCam) REC.heroCam = document.createElement("canvas");
+    REC.heroCam.width = cam.videoWidth; REC.heroCam.height = cam.videoHeight; REC.heroCam.getContext("2d").drawImage(cam, 0, 0);
+  } else REC.heroCam = null;
+  REC.heroCombo = p.combo; REC.heroAt = now;
+}
+function coverCanvas(c, src, x, y, w, h, mirror){
+  const sc = Math.max(w / src.width, h / src.height), sw = w / sc, sh = h / sc;
+  c.save(); c.beginPath(); c.rect(x, y, w, h); c.clip();
+  if (mirror){ c.translate(x * 2 + w, 0); c.scale(-1, 1); }
+  c.drawImage(src, (src.width - sw) / 2, (src.height - sh) * .4, sw, sh, x, y, w, h); c.restore();
+}
+function fitFont(c, text, weightFamily, max, width){ let fs = max; do { c.font = `${weightFamily.replace("{}", fs)}`; fs -= 4; } while (c.measureText(text).width > width && fs > 24); }
+function cardStats(){
+  const k = REC.card || {}, g = GENRES[k.gid] || {};
+  return { k, g, score: (k.score || 0).toLocaleString(), stats: `${k.acc != null ? k.acc.toFixed(1) : "–"}% ACC  ·  ${k.max || 0}x MAX COMBO  ·  ${k.hits || 0}/${k.total || 0} NOTES`,
+    song: `${(g.name || "").toUpperCase()} · ${(g.artist || "").toUpperCase()} · ${(DIFF_NAME[k.diff] || "").toUpperCase()}`,
+    rank: k.rank ? `#${k.rank} OF ${k.of} ON THE LEADERBOARD` : (k.best ? "NEW PERSONAL BEST" : "") };
+}
+function drawCardGel(c, W, H, story){
+  const { score, stats, song, rank } = cardStats(), s = W / 720;
+  if (story) c.drawImage(REC.hero, 0, 0, W, H); else c.drawImage(REC.hero, 0, 330, 720, 900, 0, 0, W, H);
+  // final score on a big gel slab
+  const sx = 44, sy = story ? 70 : 40, sw = W - 88, sh = story ? 420 : 350;
+  gelSlab(c, sx, sy, sw, sh, 64, "rgba(150,215,255,.36)");
+  c.textAlign = "center"; c.textBaseline = "alphabetic";
+  c.font = '26px "Share Tech Mono", monospace'; c.fillStyle = "rgba(20,40,110,.85)"; c.fillText("FINAL SCORE", W / 2, sy + 70);
+  fitFont(c, score, '900 {}px Unbounded, "Arial Black", sans-serif', 150, sw - 80);
+  const ny = sy + (story ? 230 : 200);
+  c.lineJoin = "round"; c.lineWidth = 10; c.strokeStyle = "rgba(20,44,120,.55)"; c.strokeText(score, W / 2, ny);
+  const tg = c.createLinearGradient(0, ny - 120, 0, ny); tg.addColorStop(0, "#ffffff"); tg.addColorStop(.48, "#dff3ff"); tg.addColorStop(.52, "#7fb8ff"); tg.addColorStop(1, "#ffffff");
+  c.fillStyle = tg; c.fillText(score, W / 2, ny);
+  c.font = '26px "Share Tech Mono", monospace'; c.fillStyle = "rgba(15,30,90,.92)"; c.fillText(stats, W / 2, ny + 62);
+  c.font = '22px "Share Tech Mono", monospace'; c.fillStyle = "rgba(15,30,90,.75)"; c.fillText(song, W / 2, ny + 104);
+  if (rank){ c.font = '800 26px Unbounded, "Arial Black", sans-serif'; const rw = c.measureText(rank).width + 48, ry = sy + sh - 4;
+    gelSlab(c, W / 2 - rw / 2, ry - 26, rw, 52, 26, "rgba(255,170,230,.55)"); c.fillStyle = "#ffffff"; c.strokeStyle = "rgba(120,30,110,.45)"; c.lineWidth = 4; c.strokeText(rank, W / 2, ry + 10); c.fillText(rank, W / 2, ry + 10); }
+  // producer card
+  const ph = story ? 210 : 150, py = H - ph - (story ? 56 : 30);
+  gelSlab(c, sx, py, sw, ph, 56, "rgba(220,190,255,.36)");
+  c.textAlign = "left"; fitFont(c, profile.tag, '800 {}px Unbounded, "Arial Black", sans-serif', 58, sw * .55);
+  c.fillStyle = "#ffffff"; c.lineWidth = 6; c.strokeStyle = "rgba(20,44,120,.5)"; c.strokeText(profile.tag, sx + 44, py + ph * .46); c.fillText(profile.tag, sx + 44, py + ph * .46);
+  c.font = '24px "Share Tech Mono", monospace'; c.fillStyle = "rgba(15,30,90,.9)";
+  c.fillText(`${profile.ig ? "IG @" + profile.ig + "   ·   " : ""}PLAY AT ${location.host.toUpperCase() || "MINI MANIA"}`, sx + 44, py + ph * .76);
+  const art = document.querySelector(".logo-art");
+  if (art && art.width > 1){ const lh = ph * .5, lw = art.width / art.height * lh; c.drawImage(art, sx + sw - 40 - lw, py + 22, lw, lh); }
+}
+function drawCardClassic(c, W, H, story){
+  const { k, g, score, stats, song, rank } = cardStats();
+  c.fillStyle = "#05061a"; c.fillRect(0, 0, W, H);
+  const top = story ? 960 : 750;
+  if (story) c.drawImage(REC.hero, 0, 0, 720, 640, 0, 0, W, top);
+  else {
+    c.drawImage(REC.hero, 0, 140, 720, 500, 0, 0, W, top);
+    c.fillStyle = "rgba(5,6,26,.85)"; c.fillRect(0, 0, W, 69);
+    c.textBaseline = "middle"; c.textAlign = "left"; c.font = '900 36px Doto, "Share Tech Mono", monospace'; c.fillStyle = "#fff"; c.fillText("MINI MANIA", 24, 36);
+    c.textAlign = "right"; c.font = '22px "Share Tech Mono", monospace'; c.fillStyle = COL.muted; c.fillText(trackLine(g).toUpperCase(), W - 24, 36);
+  }
+  const bh = H - top;
+  if (REC.heroCam){ coverCanvas(c, REC.heroCam, 0, top, W, bh, true); glassOver(c, 0, top, W, bh, .35); }
+  else {
+    const bg = c.createLinearGradient(0, top, 0, H); bg.addColorStop(0, "#0c0d3c"); bg.addColorStop(1, "#1a1060"); c.fillStyle = bg; c.fillRect(0, top, W, bh);
+    c.fillStyle = "rgba(5,6,26,.55)"; for (let x = 0; x < W; x += 36) c.fillRect(x, top, 4, bh); for (let y = top; y < H; y += 36) c.fillRect(0, y, W, 4);
+  }
+  c.fillStyle = "rgba(190,224,255,.6)"; c.fillRect(0, top - 1, W, 3);
+  // final score panel: dark glass over you
+  const pw = W - 96, ph = story ? 560 : 470, px = 48, py = H - ph - (story ? 120 : 56);
+  c.save(); c.fillStyle = "rgba(5,6,26,.66)"; gelPath(c, px, py, pw, ph, 28); c.fill(); c.lineWidth = 2; c.strokeStyle = "rgba(170,195,255,.45)"; c.stroke(); c.restore();
+  c.textAlign = "center"; c.textBaseline = "alphabetic";
+  c.font = '30px "Share Tech Mono", monospace'; c.fillStyle = COL.muted; c.fillText(profile.tag + (profile.ig ? "  ·  IG @" + profile.ig : ""), W / 2, py + 72);
+  c.fillStyle = "#fff"; c.shadowColor = "rgba(120,170,255,.9)"; c.shadowBlur = 36; fitFont(c, score, '900 {}px Unbounded, "Arial Black", sans-serif', 168, pw - 80);
+  c.fillText(score, W / 2, py + (story ? 250 : 230)); c.shadowBlur = 0;
+  c.font = '28px "Share Tech Mono", monospace'; c.fillStyle = "#e8ecff"; c.fillText(stats, W / 2, py + (story ? 330 : 300));
+  c.font = '24px "Share Tech Mono", monospace'; c.fillStyle = COL.muted; c.fillText(song, W / 2, py + (story ? 380 : 345));
+  if (rank){ c.font = '800 28px Unbounded, "Arial Black", sans-serif'; c.fillStyle = "#ff8fd6"; c.fillText(rank, W / 2, py + (story ? 450 : 405)); }
+  c.font = '22px "Share Tech Mono", monospace'; c.fillStyle = "rgba(200,215,255,.75)"; c.fillText(`PLAY AT ${location.host.toUpperCase() || "MINI MANIA"}`, W / 2, py + ph - 30);
+  if (story){ c.textAlign = "left"; c.font = '900 34px Doto, "Share Tech Mono", monospace'; c.fillStyle = "#fff"; c.fillText("MINI MANIA", 48, H - 50); }
+}
+function makeCard(kind){
+  const story = kind === "story", W = 1080, H = story ? 1920 : 1350, cvs = document.createElement("canvas"); cvs.width = W; cvs.height = H;
+  const c = cvs.getContext("2d");
+  (REC.styleUsed === "gel" ? drawCardGel : drawCardClassic)(c, W, H, story);
+  c.textAlign = "left"; c.textBaseline = "alphabetic";
+  return cvs;
+}
+const CARDS = { story: null, post: null, v: 0 };
+function clearCards(){ ["story", "post"].forEach(k => { if (CARDS[k]) URL.revokeObjectURL(CARDS[k].url); CARDS[k] = null; }); CARDS.v++; }
+async function buildCards(){
+  if (!REC.hero || !REC.card) return;
+  const v = ++CARDS.v;
+  for (const kind of ["story", "post"]){
+    const blob = await new Promise(res => makeCard(kind).toBlob(res, "image/png"));
+    if (v !== CARDS.v || !blob) return;
+    if (CARDS[kind]) URL.revokeObjectURL(CARDS[kind].url);
+    CARDS[kind] = { blob, url: URL.createObjectURL(blob) };
+  }
+  renderCards();
+}
+function renderCards(){
+  const row = $("cardRow"); if (!row) return;
+  row.hidden = !(CARDS.story && CARDS.post) || REC.pending;
+  if (row.hidden) return;
+  $("cardStoryImg").src = CARDS.story.url; $("cardPostImg").src = CARDS.post.url;
+}
+const cardName = kind => `mini-mania-${REC.gid || "run"}-${(REC.card && REC.card.score) || 0}-${kind === "story" ? "story" : "post"}.png`;
+async function saveCard(kind){
+  const card = CARDS[kind], hint = $("cardHint"); if (!card) return;
+  let f = null; try { f = new File([card.blob], cardName(kind), { type: "image/png" }); } catch(e){}
+  if (f && !inClaude && navigator.canShare && navigator.canShare({ files: [f] })){
+    try { await navigator.share({ files: [f] }); hint.textContent = IS_MOBILE ? "Pick “Save Image”, then post it from Instagram." : "Shared."; return; }
+    catch(e){ if (e && e.name === "AbortError"){ hint.textContent = "Canceled. Your card is still here."; return; } }
+  }
+  if (downloadsNS){ try { await downloadsNS.save({ filename: cardName(kind), data: card.blob }); hint.textContent = "Card saved."; } catch(e){ hint.textContent = "This card can't be saved in this view."; } return; }
+  if (inClaude){ hint.textContent = "Saving files isn't available in this view."; return; }
+  const a = document.createElement("a"); a.href = card.url; a.download = cardName(kind); document.body.appendChild(a); a.click(); a.remove();
+  hint.textContent = "Card downloaded.";
 }
 /* ---------- clip length, camera roll and Instagram Story sharing ---------- */
 const SHORT_LEN = 15;
@@ -2321,6 +2487,7 @@ function drawRecGel(t){
   // utopian haze at the edges
   const hz = c.createRadialGradient(W / 2, H * .45, H * .3, W / 2, H * .45, H * .75); hz.addColorStop(0, "rgba(255,255,255,0)"); hz.addColorStop(1, "rgba(235,248,255,.32)");
   c.fillStyle = hz; c.fillRect(0, 0, W, H);
+  if (REC.grabNow) heroGrab();
   // 3. score counting up, with the live stat line
   if (p.score < GEL.last) { GEL.shown = 0; GEL.pops = []; }
   if (p.score > GEL.last){ GEL.pops.push({ v: p.score - GEL.last, t: now }); GEL.last = p.score; }
@@ -2454,6 +2621,7 @@ async function submitScore(gid, diff, p, accPct){
       body: JSON.stringify({ track: gid, diff, tag, key: keyFor(tag), ig: profile.ig || "", score: p.score, acc: accPct, combo: p.max }) });
     const data = await r.json();
     if (!r.ok) throw new Error(data.error);
+    if (REC.card && REC.card.gid === gid){ REC.card.rank = data.rank; REC.card.of = data.total; buildCards(); }
     el.textContent = `You're #${data.rank} of ${data.total} on the ${GENRES[gid].name} · ${DIFF_NAME[diff]} leaderboard.`;
   } catch(e){ el.textContent = "Your score couldn't be posted to the leaderboard this time."; }
   el.hidden = false; loadBoard();
@@ -2703,6 +2871,8 @@ renderDiff();
 $("recToggle").addEventListener("click", () => { REC.armed = !REC.armed; store.set("rec", REC.armed); renderRecUi(); });
 $("recBtn").addEventListener("click", () => { if (REC.recorder) stopRec(true); else startRec(); });
 $("clipSave").addEventListener("click", saveClip);
+$("cardStory").addEventListener("click", () => saveCard("story"));
+$("cardPost").addEventListener("click", () => saveCard("post"));
 $("clipIG").addEventListener("click", () => { if (!REC.shortBusy) shareClip(true); });
 $("clipIGOpen").addEventListener("click", () => { setTimeout(() => { REC.igStep = 0; renderClip(); $("clipHint").textContent = "No Instagram? Install it, or post the saved clip from your camera roll."; }, 2500); });
 $("lenFull").addEventListener("click", () => setClipLen("full"));
