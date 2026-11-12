@@ -2,7 +2,7 @@
 import { put, list } from "@vercel/blob";
 import { owns } from "./_tags.js";
 
-const TRACKS = new Set(["rotn", "boa", "jxx", "ovm", "gso", "bat", "olx"]);
+const TRACKS = new Set(["rotn", "boa", "jxx", "ovm", "gso", "bat", "olx", "dnf", "nfd"]);
 const DIFFS = new Set(["easy", "normal", "hard"]);
 const MAX_SCORE = 2000000;
 const TAG_RE = /^[A-Za-z0-9_.-]{1,20}$/;
