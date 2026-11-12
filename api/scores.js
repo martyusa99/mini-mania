@@ -1,7 +1,7 @@
 // MINI MANIA leaderboard: one small file per run in Vercel Blob; the board keeps each producer's best.
 import { put, list } from "@vercel/blob";
 
-const TRACKS = new Set(["rotn", "boa"]);
+const TRACKS = new Set(["rotn", "boa", "jxx", "ovm"]);
 const DIFFS = new Set(["easy", "normal", "hard"]);
 const MAX_SCORE = 2000000;
 const TAG_RE = /^[A-Za-z0-9_.-]{1,20}$/;
