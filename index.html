@@ -2092,6 +2092,83 @@ function metaCluster(c, cx, cy, R, beatP, seed, warm){
   META.cv.getContext("2d").putImageData(META.img, 0, 0);
   c.save(); c.imageSmoothingQuality = "high"; c.globalAlpha = .9; c.drawImage(META.cv, cx - R, cy - R, R * 2, R * 2); c.restore();
 }
+// a gel bubble holding a little Y2K mall-goth boy who dances on the beat grid (an original character)
+function gelKid(c, cx, cy, R, beatP){
+  const beatF = ((beatP % 1) + 1) % 1, bar = Math.floor(beatP / 4), move = ((bar % 3) + 3) % 3;
+  const hit = Math.pow(1 - beatF, 2.2), k = 1 + .06 * hit, u = R / 54;
+  const bounce = -Math.abs(Math.sin(Math.PI * beatP)) * 5, side = Math.sin(Math.PI * beatP);
+  const INK = "#1b1230", INK2 = "#3a2a66", SKIN = "#f3cdb4", HOT = "#ff2f86", CYAN = "#5ff0ff", CHAIN = "#e4ecff";
+  c.save(); c.translate(cx, cy); c.scale(k, k);
+  // the bubble body
+  const bg = c.createRadialGradient(-R * .3, -R * .35, R * .1, 0, 0, R);
+  bg.addColorStop(0, "rgba(255,240,255,.75)"); bg.addColorStop(.6, "rgba(214,190,255,.5)"); bg.addColorStop(1, "rgba(150,210,255,.6)");
+  c.beginPath(); c.arc(0, 0, R, 0, Math.PI * 2); c.fillStyle = bg; c.fill();
+  c.save(); c.clip(); c.scale(u, u); c.translate(0, -5);
+  const L = (x1, y1, x2, y2, w, col) => { c.strokeStyle = col; c.lineWidth = w; c.lineCap = "round"; c.beginPath(); c.moveTo(x1, y1); c.lineTo(x2, y2); c.stroke(); };
+  const sway = (move === 2 ? side * 6 : side * 2), hipY = 10 + bounce, hipX = sway * .5;
+  const shX = sway, shY = -18 + bounce * .8;
+  // legs: giant wide-leg pants that swish
+  const stance = move === 2 ? 15 + side * 4 : 13;
+  [-1, 1].forEach(s => {
+    const fx = s * stance + (move === 2 ? side * 3 : 0), swish = Math.sin(Math.PI * beatP + s) * 2.5;
+    c.fillStyle = INK; c.beginPath();
+    c.moveTo(hipX + s * 1, hipY); c.lineTo(hipX + s * 11, hipY);
+    c.quadraticCurveTo(fx + s * 12 + swish, 32, fx + s * 13 + swish, 50);
+    c.lineTo(fx - s * 9 + swish, 50); c.quadraticCurveTo(fx - s * 4, 30, hipX + s * 1, hipY); c.fill();
+    L(fx - s * 4 + swish, 30, fx - s * 6 + swish, 49, 1.2, INK2);              // seam shine
+    c.fillStyle = "#0b0716"; c.beginPath(); c.ellipse(fx + swish, 52, 10, 4, 0, 0, Math.PI * 2); c.fill();   // skate shoes
+    c.fillStyle = "#fff"; c.fillRect(fx + swish - 9, 52.5, 18, 1.6);
+  });
+  // wallet chains swinging off the hips
+  [-1, 1].forEach(s => { const sw = Math.sin(Math.PI * 2 * beatP + s) * 4;
+    c.strokeStyle = CHAIN; c.lineWidth = 1.4; c.setLineDash([2, 1.5]); c.beginPath();
+    c.moveTo(hipX + s * 9, hipY + 2); c.quadraticCurveTo(hipX + s * 15 + sw, hipY + 16, hipX + s * 4, hipY + 8); c.stroke(); c.setLineDash([]); });
+  // torso: black band tee
+  c.fillStyle = INK; c.beginPath();
+  c.moveTo(shX - 11, shY); c.lineTo(shX + 11, shY); c.lineTo(hipX + 10, hipY + 1); c.lineTo(hipX - 10, hipY + 1); c.closePath(); c.fill();
+  // tee graphic: a hot pink star
+  c.fillStyle = HOT; c.beginPath();
+  for (let i = 0; i < 10; i++){ const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? 2.4 : 5.5; c.lineTo((shX + hipX) / 2 + Math.cos(a) * rr, (shY + hipY) / 2 - 2 + Math.sin(a) * rr); }
+  c.fill();
+  // studded belt
+  c.fillStyle = "#000"; c.fillRect(hipX - 11, hipY - 1, 22, 3.4);
+  c.fillStyle = CHAIN; for (let i = -9; i <= 9; i += 3) c.fillRect(hipX + i - .6, hipY - .1, 1.3, 1.3);
+  // arms: fist pump, rock horns, skank swing, cycling every bar
+  [-1, 1].forEach(s => {
+    const sx = shX + s * 10, sy = shY + 2; let a1, a2;
+    if (move === 0){ if (s === 1){ a1 = -Math.PI / 2 + .35 - .25 * hit; a2 = -Math.PI / 2 + .05 - .1 * hit; } else { a1 = Math.PI * .62; a2 = Math.PI * .08; } }
+    else if (move === 1){ a1 = -Math.PI / 2 + s * (.7 + .25 * hit); a2 = -Math.PI / 2 + s * .25; }
+    else { const p = s * side; a1 = Math.PI / 2 - s * (.4 + .6 * p); a2 = Math.PI / 2 - s * (1.2 + .5 * p); }
+    const ex = sx + Math.cos(a1) * 11, ey = sy + Math.sin(a1) * 11, hx = ex + Math.cos(a2) * 10, hy = ey + Math.sin(a2) * 10;
+    L(sx, sy, ex, ey, 5.5, INK);                                   // sleeve / upper arm
+    L(ex, ey, hx, hy, 3.6, SKIN);
+    L(ex + Math.cos(a2) * 4, ey + Math.sin(a2) * 4, ex + Math.cos(a2) * 6.5, ey + Math.sin(a2) * 6.5, 4, HOT);   // wristband
+    c.fillStyle = SKIN; c.beginPath(); c.arc(hx, hy, 2.6, 0, Math.PI * 2); c.fill();
+    if (move === 1){ L(hx, hy, hx - 1.2, hy - 4, 1.3, SKIN); L(hx, hy, hx + 1.2, hy - 4, 1.3, SKIN); }   // horns up
+  });
+  // head: banging on the beat
+  const tilt = (move === 1 ? .32 : .18) * hit - .06 + side * .05, hX = shX, hY = shY - 9 + 2 * hit;
+  c.save(); c.translate(hX, hY); c.rotate(tilt);
+  L(0, 4, 0, 9, 4, SKIN);                                          // neck
+  c.fillStyle = SKIN; c.beginPath(); c.ellipse(0, -3, 9.5, 10.5, 0, 0, Math.PI * 2); c.fill();
+  // spiky streaked hair with a long side fringe
+  c.fillStyle = INK; c.beginPath(); c.moveTo(-9, -1);
+  const spikes = [[-10, -10], [-8, -18], [-4, -12], [-1, -21], [2, -13], [6, -20], [7, -11], [12, -14], [9, -4]];
+  spikes.forEach(([x, y]) => c.lineTo(x, y)); c.lineTo(9, -2); c.quadraticCurveTo(2, -9, -6, 4); c.lineTo(-9, 5); c.closePath(); c.fill();
+  c.strokeStyle = HOT; c.lineWidth = 1.6; c.beginPath(); c.moveTo(-3, -11); c.lineTo(-1, -20); c.stroke();
+  c.strokeStyle = CYAN; c.beginPath(); c.moveTo(4, -11); c.lineTo(6, -19); c.stroke();
+  c.fillStyle = INK; c.fillRect(1.5, -3, 3.4, 1.4);                // the eye that isn't under the fringe
+  c.fillStyle = "#c9c2d6"; c.beginPath(); c.arc(-7.8, 1, 1, 0, Math.PI * 2); c.fill();   // lip-ring-ish ear stud
+  c.restore();
+  c.restore();
+  // the glass: rim, fresnel and a hot specular, so he reads as sealed in gel
+  const rim = c.createRadialGradient(0, 0, R * .7, 0, 0, R);
+  rim.addColorStop(0, "rgba(255,255,255,0)"); rim.addColorStop(1, "rgba(220,240,255,.7)");
+  c.beginPath(); c.arc(0, 0, R, 0, Math.PI * 2); c.fillStyle = rim; c.fill();
+  c.lineWidth = 2; c.strokeStyle = "rgba(255,255,255,.75)"; c.stroke();
+  c.fillStyle = "rgba(255,255,255,.85)"; c.beginPath(); c.ellipse(-R * .42, -R * .52, R * .2, R * .08, -.6, 0, Math.PI * 2); c.fill();
+  c.restore();
+}
 function drawRecGel(t){
   const c = REC.ctx, W = 720, H = 1280, g = game.g, p = game.you, now = performance.now() / 1000;
   const beatP = (t - game.beatOff) / game.beat, f = ((beatP % 1) + 1) % 1, beat = Math.pow(.5 + .5 * Math.cos(Math.PI * 2 * f), 4);
@@ -2132,8 +2209,9 @@ function drawRecGel(t){
   // two merging gel clusters bloom together on every bar; the small beads swell on the same beat
   metaCluster(c, 150 + Math.sin(beatP * Math.PI / 8) * 18, 340, 150, beatP, 0, true);
   metaCluster(c, 590 - Math.sin(beatP * Math.PI / 8) * 18, 640, 120, beatP, 2.1, false);
-  [[640, 330, 30, 320, 4.4], [140, 880, 34, 90, 3.1], [380, 980, 22, 160, 5.2]].forEach(([x, y, r, hue, ph]) =>
+  [[140, 880, 34, 90, 3.1], [380, 980, 22, 160, 5.2]].forEach(([x, y, r, hue, ph]) =>
     gelBlob(c, x + Math.sin(beatP * Math.PI / 4 + ph) * 16, y + Math.cos(beatP * Math.PI / 4 + ph) * 12, r, hue, now + ph, beat));
+  gelKid(c, 628 + Math.sin(beatP * Math.PI / 4 + 4.4) * 8, 345 + Math.cos(beatP * Math.PI / 4 + 4.4) * 6, 66, beatP);
   // light sweep across the whole frame every two bars, and a breath of white on each beat
   { const k = ((beatP / 8) % 1 + 1) % 1, pos = -400 + k * (W + 900);
     c.save(); c.globalCompositeOperation = "screen"; c.translate(pos, 0); c.transform(1, 0, -.45, 1, 0, 0);
