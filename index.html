@@ -389,6 +389,7 @@ kbd{background:var(--pearl);color:var(--text);border:1px solid rgba(140,120,110,
 .tag-field input::placeholder{color:#9aa6c8}
 .start-card .label,.start-card .hint{color:#1b2f74}
 .err{color:#c4264a}
+.res-actions .btn{padding:14px 26px;font-size:15px}
 .tag-ok{font-family:var(--mono);font-size:13px;color:#1f7a4d}
 .stats div{background:rgba(255,255,255,.6);border:1px solid rgba(255,255,255,.95);box-shadow:inset 0 -6px 12px rgba(70,120,210,.08)}
 .stats b{color:var(--text)}
@@ -589,13 +590,9 @@ kbd{background:var(--pearl);color:var(--text);border:1px solid rgba(140,120,110,
       <p class="lede" id="rSub"></p>
       <p class="rank-line" id="rRank" hidden></p>
     </div>
-    <div class="listen panel">
-      <h2>Hear the runs</h2>
-      <p class="hint">The song as each player played it. Notes they missed stay silent.</p>
-      <div class="actions">
-        <button class="btn primary" id="pbYou" data-label="Play your run">Play your run</button>
-        <button class="btn" id="pbOpp" data-label="Play theirs">Play theirs</button>
-      </div>
+    <div class="actions res-actions">
+      <button class="btn primary" id="rematchBtn">Run it back</button>
+      <button class="btn" id="lobbyBtn">Back to lobby</button>
     </div>
     <div class="panel clip" id="clipPanel" hidden>
       <h2>Your clip</h2>
@@ -625,10 +622,6 @@ kbd{background:var(--pearl);color:var(--text);border:1px solid rgba(140,120,110,
         <thead><tr><th></th><th id="rYouH">You</th><th id="rOppH">Opp</th></tr></thead>
         <tbody id="rBody"></tbody>
       </table>
-    </div>
-    <div class="actions">
-      <button class="btn primary" id="rematchBtn">Run it back</button>
-      <button class="btn" id="lobbyBtn">Back to lobby</button>
     </div>
   </div>
 </section>
@@ -1793,8 +1786,6 @@ function finish(){
   $("rSub").textContent = sub;
   $("rCrate").textContent = trackLine(g);
   $("rYouH").textContent = profile.tag; $("rOppH").textContent = opp ? opp.tag : "";
-  $("pbOpp").hidden = !opp;
-  $("pbYou").closest(".listen").hidden = !!g.audio && !g.stems;
   const rows = [["Score", p => p.score.toLocaleString()], ["Accuracy", acc], ["Notes hit", p => `${hitsOf(p)} / ${total}`], ["Long notes held", p => `${p.streaks} / ${totalHolds}`], ["Max combo", p => p.max], ["Top multiplier", p => "×" + p.peakMult], ["Perfect", p => p.counts.perfect], ["Great", p => p.counts.great], ["Good", p => p.counts.good], ["Miss", p => p.counts.miss]];
   const body = $("rBody"); body.textContent = "";
   rows.forEach(([label, fn]) => {
@@ -2269,8 +2260,6 @@ $("cancelBtn").addEventListener("click", () => { clearQueue(); show("lobby"); })
 $("quitBtn").addEventListener("click", quit);
 $("rematchBtn").addEventListener("click", () => { stopPlayback(); if (lastMatch) startGame(lastMatch.gid, lastMatch.opp); });
 $("lobbyBtn").addEventListener("click", () => { stopPlayback(); renderStats(); show("lobby"); loadBoard(); });
-$("pbYou").addEventListener("click", e => togglePlayback(e.currentTarget, () => lastMatch && { rec: lastMatch.you.rec, gid: lastMatch.gid }));
-$("pbOpp").addEventListener("click", e => togglePlayback(e.currentTarget, () => lastMatch && { rec: lastMatch.cpu.rec, gid: lastMatch.gid }));
 $("cratePreview").addEventListener("click", e => { const id = profile.genre; if (GENRES[id].preview) return playPreview(e.currentTarget, GENRES[id]); togglePlayback(e.currentTarget, () => ({ rec: demoRec(id), gid: id, from: INTRO_BARS + 8, to: INTRO_BARS + 12 })); });
 $("tag").value = profile.tag === "@you" ? "" : profile.tag.replace(/^@/, "");
 $("ig").value = profile.ig || "";
