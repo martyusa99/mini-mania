@@ -611,7 +611,11 @@ if (!GENRES[profile.genre]) profile.genre = "rotn";
 /* ---------- dom ---------- */
 const $ = id => document.getElementById(id);
 const screens = ["start","lobby","queue","game","results"];
-function show(id){ screens.forEach(s => $(s).hidden = s !== id); }
+function show(id){
+  // leaving a screen stops anything it was playing: the clip preview and the run playback
+  if (id !== "results"){ const v = $("clipVideo"); try { v.pause(); } catch(e){} if (typeof stopPlayback === "function") stopPlayback(); }
+  screens.forEach(s => $(s).hidden = s !== id);
+}
 const css = getComputedStyle(document.documentElement);
 const LANE_COL = ["--l0","--l1","--l2","--l3"].map(v => css.getPropertyValue(v).trim());
 const COL = { text: css.getPropertyValue("--text").trim(), muted: css.getPropertyValue("--muted").trim(), ink: css.getPropertyValue("--void").trim() };
