@@ -522,12 +522,8 @@ kbd{background:var(--pearl);color:var(--text);border:1px solid rgba(140,120,110,
           <div class="seg" role="radiogroup" aria-label="Difficulty"><button type="button" role="radio" id="diffEasy" aria-checked="true">Easy</button><button type="button" role="radio" id="diffNormal" aria-checked="false">Normal</button><button type="button" role="radio" id="diffHard" aria-checked="false">Hard</button></div>
         </div>
         <div class="opt" id="recRow">
-          <div class="opt-text"><span class="opt-name">Record run</span><span class="opt-desc">Saves a vertical clip of your run to post</span></div>
+          <div class="opt-text"><span class="opt-name">Record run</span><span class="opt-desc">Saves a vertical clip to post. Pick Gel or Classic style after the run</span></div>
           <div class="opt-ctl"><span class="state" id="recState">OFF</span><button class="switch rec" id="recToggle" type="button" role="switch" aria-checked="false" aria-label="Record run"><span class="knob"></span></button></div>
-        </div>
-        <div class="opt" id="styleRow">
-          <div class="opt-text"><span class="opt-name">Clip style</span><span class="opt-desc" id="styleDesc"></span></div>
-          <div class="opt-ctl"><div class="seg" role="radiogroup" aria-label="Clip style"><button type="button" role="radio" id="styleGel" aria-checked="true">Gel</button><button type="button" role="radio" id="styleClassic" aria-checked="false">Classic</button></div></div>
         </div>
         <div class="opt">
           <div class="opt-text"><span class="opt-name">Face-cam</span><span class="opt-desc" id="camDesc">Shows your camera under the lanes and puts you in your clip</span></div>
@@ -604,6 +600,7 @@ kbd{background:var(--pearl);color:var(--text);border:1px solid rgba(140,120,110,
         <video id="clipVideo" controls playsinline hidden></video>
         <div class="side-info">
           <div class="hint" id="clipHint">Finishing your clip…</div>
+          <div class="clip-len" id="clipStyleRow" hidden><span class="label">Style</span><div class="seg" role="radiogroup" aria-label="Clip style"><button type="button" role="radio" id="cGel" aria-checked="true">Gel</button><button type="button" role="radio" id="cClassic" aria-checked="false">Classic</button></div></div>
           <div class="clip-len" id="clipLenRow" hidden><span class="label">Length</span><div class="seg" role="radiogroup" aria-label="Clip length"><button type="button" role="radio" id="lenFull" aria-checked="true">Full run</button><button type="button" role="radio" id="lenShort" aria-checked="false">15 sec</button></div></div>
           <div class="fprog" id="shortProgWrap" hidden><i id="shortProg"></i></div>
           <div class="actions"><button class="btn primary" id="clipSave" hidden>Save clip</button><button class="btn ig-btn" id="clipIG" type="button" hidden>Share to IG Story</button><a class="btn primary ig-btn" id="clipIGOpen" hidden>Open Instagram Story</a></div>
@@ -1828,8 +1825,10 @@ function pickMime(){
   for (const [m, e] of opts){ try { if (MediaRecorder.isTypeSupported(m)) return [m, e]; } catch(_){} }
   return ["", "webm"];
 }
+function dropOther(){ const o = REC.other; if (!o) return; URL.revokeObjectURL(o.url); if (o.short) URL.revokeObjectURL(o.short.url); if (o.split) URL.revokeObjectURL(o.split.url); REC.other = null; }
 function startRec(){
   if (!recSupported || REC.recorder || !game) return;
+  dropOther();
   if (!REC.canvas){ REC.canvas = document.createElement("canvas"); REC.canvas.width = 720; REC.canvas.height = 1280; REC.ctx = REC.canvas.getContext("2d"); }
   REC.styleUsed = REC.style; GEL.shown = 0; GEL.last = 0; GEL.pops = [];
   drawRec(0);
@@ -1854,13 +1853,33 @@ function startRec(){
     REC.chunks = []; REC.pending = false; renderClip();
     if (REC.blob && REC.len === "short" && (REC.dur || 0) > SHORT_LEN + 1) makeShort();
   };
-  rec.start(250); REC.recorder = rec; renderRecUi();
+  rec.start(250); REC.recorder = rec;
+  // the other style records alongside, so the style can be picked after the run
+  REC.alt = null;
+  try {
+    const other = REC.styleUsed === "gel" ? "classic" : "gel", ac2 = document.createElement("canvas"); ac2.width = 720; ac2.height = 1280;
+    const alt = { style: other, canvas: ac2, ctx: ac2.getContext("2d"), chunks: [] };
+    drawRecStyle(alt.ctx, other, 0);
+    const st2 = ac2.captureStream(30); if (recDest) recDest.stream.getAudioTracks().forEach(tr => st2.addTrack(tr.clone ? tr.clone() : tr));
+    const r2 = new MediaRecorder(st2, mime ? { mimeType: mime, videoBitsPerSecond: 3000000 } : undefined);
+    r2.ondataavailable = e => { if (e.data && e.data.size) alt.chunks.push(e.data); };
+    r2.onstop = () => {
+      st2.getTracks().forEach(tr => tr.stop());
+      const keep = REC.keep && alt.chunks.length;
+      dropOther();
+      REC.other = keep ? (() => { const blob = new Blob(alt.chunks, { type: r2.mimeType || (ext === "mp4" ? "video/mp4" : "video/webm") }); return { styleUsed: other, blob, url: URL.createObjectURL(blob), ext, short: null, split: null }; })() : null;
+      alt.chunks = []; renderClip();
+    };
+    r2.start(250); alt.recorder = r2; REC.alt = alt;
+  } catch(e){ REC.alt = null; }
+  renderRecUi();
 }
 function stopRec(keep){
   if (!REC.recorder) return;
   REC.keep = keep; REC.pending = keep; REC.dur = (performance.now() - REC.t0) / 1000;
   try { REC.recorder.stop(); } catch(e){ REC.pending = false; }
-  REC.recorder = null; renderRecUi(); renderClip();
+  if (REC.alt && REC.alt.recorder){ try { REC.alt.recorder.stop(); } catch(e){} }
+  REC.alt = null; REC.recorder = null; renderRecUi(); renderClip();
 }
 function clearClip(){
   if (REC.url) URL.revokeObjectURL(REC.url); REC.url = null; REC.blob = null;
@@ -1875,9 +1894,7 @@ function renderRecUi(){
   b.setAttribute("aria-pressed", String(on)); if (!on) b.textContent = "● Rec";
   $("recRow").hidden = !recSupported;
   tg.setAttribute("aria-checked", String(!!REC.armed)); $("recState").textContent = REC.armed ? "ON" : "OFF"; $("recState").classList.toggle("on", !!REC.armed);
-  $("styleRow").hidden = !recSupported;
-  $("styleGel").setAttribute("aria-checked", String(REC.style === "gel")); $("styleClassic").setAttribute("aria-checked", String(REC.style === "classic"));
-  $("styleDesc").textContent = REC.style === "gel" ? "You full screen, the notes glowing over you, score and tag on gel cards" : "Gameplay on top; you, or your live score, underneath";
+
 }
 function renderClip(){
   const panel = $("clipPanel"), v = $("clipVideo"), hint = $("clipHint"), save = $("clipSave"), ig = $("clipIG"), lenRow = $("clipLenRow");
@@ -1888,13 +1905,16 @@ function renderClip(){
   if (v.getAttribute("src") !== shown.url){ v.src = shown.url; }
   v.hidden = false;
   lenRow.hidden = (REC.dur || 0) <= SHORT_LEN + 1;
+  $("clipStyleRow").hidden = !REC.other;
+  $("cGel").setAttribute("aria-checked", String(REC.styleUsed === "gel")); $("cClassic").setAttribute("aria-checked", String(REC.styleUsed !== "gel"));
+  $("cGel").disabled = $("cClassic").disabled = REC.shortBusy;
   const wantShort = REC.len === "short" && (REC.dur || 0) > SHORT_LEN + 1;
   $("lenFull").setAttribute("aria-checked", String(!wantShort)); $("lenShort").setAttribute("aria-checked", String(wantShort));
   const share = canShareFiles(), canSave = !!downloadsNS || !inClaude;
   const igOpen = $("clipIGOpen"); igOpen.href = IG_STORY_URL;
   save.hidden = !canSave; ig.hidden = inClaude || (IS_MOBILE && REC.igStep === 1); igOpen.hidden = inClaude || !(IS_MOBILE && REC.igStep === 1);
   save.disabled = ig.disabled = REC.shortBusy;
-  save.textContent = share ? "Save to camera roll" : (REC.split || REC.hadCam ? "Save split-screen clip" : "Save clip");
+  save.textContent = share ? "Save to camera roll" : (REC.styleUsed !== "gel" && (REC.split || REC.hadCam) ? "Save split-screen clip" : "Save clip");
   if (REC.shortBusy){ hint.textContent = "Making your 15-second clip from the best part of your run. It plays through once, so keep this tab open."; renderFace(); return; }
   const mb = (shown.blob.size / 1048576).toFixed(1), len = shown === REC.short ? "15-second" : "Full-run";
   const what = REC.styleUsed === "gel" ? `${len} Gel-style 720×1280 ${shown.ext.toUpperCase()} with game audio · ${mb} MB.` : REC.split || REC.hadCam ? `${len} split-screen 720×1280 ${shown.ext.toUpperCase()}: your run on top, you on the bottom · ${mb} MB.` : `${len} vertical 720×1280 ${shown.ext.toUpperCase()} with game audio · ${mb} MB.`;
@@ -1963,6 +1983,14 @@ async function makeShort(){
     REC.short = { blob, url: URL.createObjectURL(blob), ext, start };
   } catch(e){ clearInterval(timer); try { v.pause(); } catch(_){} REC.len = "full"; REC.shortBusy = false; wrap.hidden = true; renderClip(); $("clipHint").textContent = "Couldn't make the 15-second version. Here's the full clip."; return; }
   REC.shortBusy = false; wrap.hidden = true; renderClip();
+}
+function setClipStyle(style){
+  if (REC.shortBusy || !REC.other || REC.styleUsed === style) return;
+  const cur = { styleUsed: REC.styleUsed, blob: REC.blob, url: REC.url, ext: REC.ext, short: REC.short, split: REC.split }, nx = REC.other;
+  REC.styleUsed = nx.styleUsed; REC.blob = nx.blob; REC.url = nx.url; REC.ext = nx.ext; REC.short = nx.short; REC.split = nx.split;
+  REC.other = cur; REC.style = style; store.set("clipStyle", style); REC.igStep = 0;
+  if (REC.len === "short" && !REC.short && (REC.dur || 0) > SHORT_LEN + 1) makeShort();
+  renderClip();
 }
 function setClipLen(len){
   REC.len = len; REC.igStep = 0;
@@ -2036,8 +2064,8 @@ function gelBlob(c, cx, cy, r, hue, t, beat){
   c.fillStyle = "rgba(255,255,255,.9)"; c.beginPath(); c.ellipse(-r * .38, -r * .45, r * .16, r * .09, -.6, 0, Math.PI * 2); c.fill();
   c.restore();
 }
-function drawRecGel(t){
-  const c = REC.ctx, W = 720, H = 1280, g = game.g, p = game.you, now = performance.now() / 1000;
+function drawRecGel(c, t){
+  const W = 720, H = 1280, g = game.g, p = game.you, now = performance.now() / 1000;
   const beatP = (t - game.beatOff) / game.beat, f = ((beatP % 1) + 1) % 1, beat = Math.pow(.5 + .5 * Math.cos(Math.PI * 2 * f), 4);
   const cam = $("camLive"), camOn = !!(CAM.stream && cam.readyState >= 2);
   // 1. you, full bleed: mirrored, cooled into the aqua world, with a soft bloom
@@ -2104,8 +2132,12 @@ function drawRecGel(t){
 }
 function drawRec(t){
   if (!game || !REC.ctx) return;
-  const c = REC.ctx, W = 720, H = 1280, g = game.g;
-  if (REC.styleUsed === "gel") return drawRecGel(t);
+  drawRecStyle(REC.ctx, REC.styleUsed, t);
+  if (REC.alt && REC.alt.ctx) drawRecStyle(REC.alt.ctx, REC.alt.style, t);
+}
+function drawRecStyle(c, style, t){ return style === "gel" ? drawRecGel(c, t) : drawRecClassic(c, t); }
+function drawRecClassic(c, t){
+  const W = 720, H = 1280, g = game.g;
   c.fillStyle = "#05061a"; c.fillRect(0, 0, W, H);
   // top half: the note highway at full width, anchored so the hit line and pads stay in frame
   if (cv.width > 1){
@@ -2447,8 +2479,8 @@ $("clipSave").addEventListener("click", saveClip);
 $("clipIG").addEventListener("click", () => { if (!REC.shortBusy) shareClip(true); });
 $("clipIGOpen").addEventListener("click", () => { setTimeout(() => { REC.igStep = 0; renderClip(); $("clipHint").textContent = "No Instagram? Install it, or post the saved clip from your camera roll."; }, 2500); });
 $("lenFull").addEventListener("click", () => setClipLen("full"));
-$("styleGel").addEventListener("click", () => { REC.style = "gel"; store.set("clipStyle", "gel"); renderRecUi(); });
-$("styleClassic").addEventListener("click", () => { REC.style = "classic"; store.set("clipStyle", "classic"); renderRecUi(); });
+$("cGel").addEventListener("click", () => setClipStyle("gel"));
+$("cClassic").addEventListener("click", () => setClipStyle("classic"));
 $("lenShort").addEventListener("click", () => setClipLen("short"));
 $("faceFile").addEventListener("change", e => { addFace(e.target.files && e.target.files[0]); e.target.value = ""; });
 $("faceMake").addEventListener("click", makeSplit);
