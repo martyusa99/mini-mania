@@ -12,7 +12,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Doto:wght@700;900&family=Unbounded:wght@700;800;900&family=Chakra+Petch:wght@400;500;600;700&family=Share+Tech+Mono&display=swap">
 <style>
-/* Layout: two-column lobby over a club backdrop (white backlight burst, pixel mosaic, LED type, spinning vinyl); battle = white/blue key lanes under a glass scoreboard. Single dark theme by choice. */
+/* Layout: two-column lobby over a Y2K daylight-ocean backdrop (see the aqua world block at the end); battle keeps its dark lanes and keys inside a pearl bezel. Single light theme by choice. */
 :root{
   --void:#05061a; --deep:#0c0d3c; --surface:rgba(10,12,44,.74); --surface2:rgba(255,255,255,.04);
   --line:rgba(170,195,255,.14); --line2:rgba(170,195,255,.3);
@@ -293,9 +293,137 @@ label.btn{cursor:pointer;display:inline-block}
 .fprog{height:4px;border-radius:2px;background:rgba(255,255,255,.08);overflow:hidden}
 .fprog i{display:block;height:100%;width:0;background:linear-gradient(90deg,#fff,var(--p2))}
 @media (prefers-reduced-motion:reduce){.rays,.disc,.grid,.radar::before,.res-title.win,.btn.primary:hover{animation:none}.meter i,.heat i,.chip,.crate,.pad{transition:none}}
+
+/* ===== Y2K aqua world: daylight sky over open water, sun flare and starbursts, halftone dots,
+   liquid-chrome lettering, frosted pearl plastic panels with metallic-blue keys. Single light theme by choice. ===== */
+:root{
+  --void:#0d1a4d; --text:#11205a; --muted:#3c4f8e; --dim:#6575a8;
+  --surface:linear-gradient(180deg,rgba(255,255,255,.84),rgba(224,237,255,.64)); --surface2:rgba(255,255,255,.55);
+  --line:rgba(40,70,150,.14); --line2:rgba(40,70,150,.3);
+  --p2:#2f5fd0; --p3:#2a56c4;
+  --metal:linear-gradient(180deg,#9db9ff 0%,#5579d6 42%,#2d4ca8 54%,#3b5fc0 78%,#5d82dc 100%);
+  --metal-hi:linear-gradient(180deg,#b5cbff 0%,#6a8ce4 42%,#3758b8 54%,#4a6fd0 78%,#7097ea 100%);
+  --pearl:linear-gradient(180deg,#fffcf9 0%,#efe5dc 52%,#ddd0c5 100%);
+  --chrome-txt:linear-gradient(180deg,#ffffff 0%,#f1f7ff 20%,#b4cdf0 42%,#1e3f8e 49%,#3e66b8 54%,#d9e9ff 70%,#ffffff 84%,#a9bde4 100%);
+  color-scheme:light;
+}
+body{background:#cfeaff;color:var(--text)}
+button:focus-visible,input:focus-visible,summary:focus-visible{outline-color:var(--p2)}
+
+/* backdrop */
+.bg{background:linear-gradient(180deg,#6fbaff 0%,#a9dcff 30%,#e3f5ff 52%,#ffffff 58.6%,#7cc0f6 59.2%,#3a8fe4 68%,#1a62cc 82%,#0c3b9c 100%)}
+.bg .beams{position:absolute;left:66%;top:28%;width:220vmax;height:220vmax;margin:-110vmax 0 0 -110vmax;animation:spin 220s linear infinite;
+  background:repeating-conic-gradient(from 0deg,rgba(255,255,255,.22) 0deg 1.4deg,transparent 1.4deg 9deg);
+  -webkit-mask-image:radial-gradient(circle,#000 0,rgba(0,0,0,.5) 12%,transparent 34%);mask-image:radial-gradient(circle,#000 0,rgba(0,0,0,.5) 12%,transparent 34%)}
+.bg .sun{position:absolute;left:66%;top:28%;width:min(900px,120vw);height:min(900px,120vw);transform:translate(-50%,-50%);border-radius:50%;
+  background:radial-gradient(circle,#fff 0 2.4%,rgba(255,252,230,.95) 4.5%,rgba(255,214,110,.55) 10%,rgba(255,236,190,.28) 18%,rgba(255,255,255,.16) 30%,transparent 58%)}
+.bg .sun::before,.bg .sun::after,.bg .sun i::before,.bg .sun i::after{content:"";position:absolute;left:50%;top:50%;border-radius:50%;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.95) 50%,transparent)}
+.bg .sun::before{width:100%;height:3px;margin:-1.5px 0 0 -50%}
+.bg .sun::after{width:3px;height:70%;margin:-35% 0 0 -1.5px;background:linear-gradient(180deg,transparent,rgba(255,255,255,.95) 50%,transparent)}
+.bg .sun i::before{width:46%;height:2px;margin:-1px 0 0 -23%;transform:rotate(45deg)}
+.bg .sun i::after{width:46%;height:2px;margin:-1px 0 0 -23%;transform:rotate(-45deg)}
+.bg .dots{position:absolute;left:0;top:0;width:min(34vw,420px);height:100%;
+  background-image:radial-gradient(circle,rgba(255,255,255,.85) 0 36%,transparent 39%);background-size:30px 30px;
+  -webkit-mask-image:linear-gradient(90deg,#000 0%,rgba(0,0,0,.6) 40%,transparent 100%),linear-gradient(180deg,#000 60%,transparent 92%);-webkit-mask-composite:source-in;
+  mask-image:linear-gradient(90deg,#000 0%,rgba(0,0,0,.6) 40%,transparent 100%),linear-gradient(180deg,#000 60%,transparent 92%);mask-composite:intersect}
+.bg .clouds{position:absolute;left:-5%;right:-5%;top:45%;height:16%;
+  background:radial-gradient(22% 60% at 8% 80%,rgba(255,255,255,.95),transparent 70%),radial-gradient(16% 48% at 22% 92%,rgba(255,214,234,.8),transparent 70%),
+    radial-gradient(20% 55% at 92% 82%,rgba(255,255,255,.95),transparent 70%),radial-gradient(14% 42% at 78% 95%,rgba(255,206,230,.7),transparent 70%),
+    radial-gradient(30% 34% at 50% 100%,rgba(255,255,255,.7),transparent 70%)}
+.bg .sea{position:absolute;left:0;right:0;top:58.6%;bottom:0;animation:sea 9s linear infinite;
+  background:radial-gradient(14% 70% at 66% 0%,rgba(255,255,255,.75),rgba(255,255,255,.12) 60%,transparent 100%),
+    repeating-linear-gradient(180deg,transparent 0 9px,rgba(255,255,255,.16) 9px 10px,transparent 10px 23px,rgba(255,255,255,.09) 23px 24px)}
+@keyframes sea{to{background-position:0 0,0 48px}}
+.bg .sp{position:absolute;left:var(--x);top:var(--y);width:var(--s);height:var(--s);margin:calc(var(--s) / -2) 0 0 calc(var(--s) / -2);animation:twinkle var(--d) ease-in-out infinite;
+  background:radial-gradient(closest-side,#fff 0 10%,rgba(255,255,255,.45) 22%,transparent 50%),
+    linear-gradient(0deg,transparent 49%,#fff 50%,transparent 51%),linear-gradient(90deg,transparent 49%,#fff 50%,transparent 51%);
+  -webkit-mask-image:radial-gradient(closest-side,#000 20%,transparent 100%);mask-image:radial-gradient(closest-side,#000 20%,transparent 100%)}
+@keyframes twinkle{0%,100%{opacity:.25;transform:scale(.6) rotate(0deg)}50%{opacity:1;transform:scale(1) rotate(12deg)}}
+@media (prefers-reduced-motion:reduce){.bg .beams,.bg .sea,.bg .sp{animation:none}}
+
+/* liquid-chrome lettering */
+.logo{position:relative;font-family:var(--display);font-weight:900;font-size:clamp(40px,8.6vw,100px);line-height:.98;letter-spacing:.01em;
+  color:transparent;background:var(--chrome-txt);-webkit-background-clip:text;background-clip:text;text-shadow:none;-webkit-text-stroke:1.5px #1b2c66;
+  filter:drop-shadow(1px 1px 0 #d6def2) drop-shadow(1px 1px 0 #a6b4d8) drop-shadow(1px 1px 0 #8392c0) drop-shadow(1px 1px 0 #6a79a8) drop-shadow(1px 1px 0 #55638f) drop-shadow(2px 2px 0 #263466) drop-shadow(0 14px 22px rgba(8,40,120,.35))}
+.eyebrow{color:#fff;font-weight:400;letter-spacing:.24em;text-shadow:0 1px 2px rgba(20,60,150,.55)}
+.lede{color:var(--muted);text-shadow:0 1px 0 rgba(255,255,255,.6)}
+.brand .lede{color:#1b2f74}
+.label{color:var(--muted)}
+h2{color:var(--text)}
+
+/* frosted pearl plastic */
+.panel,.vsbar{background:var(--surface);border:1px solid rgba(255,255,255,.95);border-radius:22px;
+  box-shadow:inset 0 1px 0 #fff,inset 0 -16px 30px rgba(70,120,210,.1),0 22px 46px -14px rgba(8,40,120,.4);
+  -webkit-backdrop-filter:blur(18px) saturate(1.3);backdrop-filter:blur(18px) saturate(1.3)}
+.opt{border-bottom-color:rgba(40,70,150,.12)}
+
+/* keys and switches: pearl keypad buttons, metallic-blue primary */
+.btn,.link,.mini{background:var(--pearl);border:1px solid rgba(140,120,110,.45);color:var(--text);
+  box-shadow:inset 0 1px 0 #fff,inset 0 -3px 6px rgba(120,95,80,.14),0 2px 5px rgba(30,45,100,.18)}
+.btn:hover,.link:hover,.mini:hover{border-color:var(--p2);background:var(--pearl)}
+.btn.primary{background:var(--metal);color:#fff;border:1px solid #1d3480;text-shadow:0 1px 1px rgba(5,15,60,.45);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.75),inset 0 -8px 14px rgba(8,20,80,.25),0 12px 26px -8px rgba(20,60,170,.6)}
+.btn.primary:hover{background:var(--metal-hi);animation:none}
+.deck-nav{background:var(--pearl);border:1px solid rgba(140,120,110,.45);color:var(--text);box-shadow:inset 0 1px 0 #fff,0 4px 10px rgba(20,50,120,.25)}
+.deck-nav:hover{border-color:var(--p2)}
+.seg{background:rgba(255,255,255,.5);border:1px solid rgba(40,70,150,.22);box-shadow:inset 0 2px 4px rgba(30,60,140,.14)}
+.seg button{color:var(--muted)}
+.seg button[aria-checked="true"]{background:var(--metal);color:#fff;text-shadow:0 1px 1px rgba(5,15,60,.4);box-shadow:inset 0 1px 0 rgba(255,255,255,.6),0 2px 5px rgba(20,50,140,.35)}
+.switch{background:linear-gradient(180deg,#cfd8ea,#eef2fa);border:1px solid rgba(40,70,150,.25);box-shadow:inset 0 2px 4px rgba(30,60,140,.22)}
+.switch .knob{background:radial-gradient(circle at 34% 28%,#fff 0 18%,#d6deef 50%,#8a99c2 100%);box-shadow:0 1px 3px rgba(20,40,100,.4)}
+.switch[aria-checked="true"]{background:var(--metal);border-color:#1d3480;box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 0 14px rgba(60,110,240,.45)}
+.switch.rec[aria-checked="true"]{background:linear-gradient(180deg,#ff9aac,#ff3b5c 50%,#c81e45);border-color:#a3163a;box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 0 14px rgba(255,59,92,.4)}
+.switch[aria-checked="true"] .knob{background:radial-gradient(circle at 34% 28%,#fff 0 22%,#e8eefb 55%,#b3c0de 100%)}
+.state{color:var(--dim)} .state.on{color:var(--p2)}
+kbd{background:var(--pearl);color:var(--text);border:1px solid rgba(140,120,110,.5);border-bottom-width:2px;box-shadow:inset 0 1px 0 #fff}
+.keys{color:#1b2f74}
+
+/* fields, stats, leaderboard */
+.tag-field,.field input{background:rgba(255,255,255,.78);border:1px solid rgba(40,70,150,.28);box-shadow:inset 0 2px 5px rgba(30,60,140,.12)}
+.tag-field:focus-within{border-color:var(--p2);box-shadow:inset 0 2px 5px rgba(30,60,140,.12),0 0 0 3px rgba(60,110,240,.25)}
+.tag-field span{color:var(--dim)} .tag-field input,.field input{color:var(--text)}
+.tag-field input::placeholder{color:#9aa6c8}
+.start-card .label,.start-card .hint{color:#1b2f74}
+.err{color:#c4264a}
+.stats div{background:rgba(255,255,255,.6);border:1px solid rgba(255,255,255,.95);box-shadow:inset 0 -6px 12px rgba(70,120,210,.08)}
+.stats b{color:var(--text)}
+.lb-list li.me{background:rgba(60,110,230,.12)}
+.lb-list li:nth-child(1) .rk{color:#b8860b} .lb-list li:nth-child(2) .rk{color:#6d7a9c} .lb-list li:nth-child(3) .rk{color:#b5652e}
+.lb-list .who a{color:var(--text)}
+.stack-legend .thr{color:var(--p2)}
+
+/* album deck sits on the horizon */
+.cover{box-shadow:0 18px 36px -6px rgba(8,40,120,.45)}
+.cover[aria-selected="true"]{box-shadow:0 0 0 2px #fff,0 0 0 3px rgba(30,60,140,.35),0 22px 50px -6px rgba(8,40,120,.55)}
+
+/* game: frosted scoreboard, pearl bezel round the lanes (the lanes and keys themselves are unchanged) */
+.side .h{color:var(--muted)}
+.side.you .num{color:var(--text);text-shadow:0 1px 0 #fff}
+.side.opp .num{color:var(--p2)}
+.cmb{color:var(--muted)} .cmb b{color:var(--text)}
+.heat,.progress{background:rgba(30,60,140,.12)}
+.side.you .heat i{background:var(--metal)}
+.progress i{background:var(--p2)}
+#cv-frame{border:1px solid rgba(255,255,255,.95);box-shadow:0 0 0 5px rgba(255,255,255,.4),0 0 0 6px rgba(40,70,150,.18),0 26px 50px -12px rgba(8,30,100,.55)}
+.gfoot .hint{color:#1b2f74}
+.camwrap{border-color:rgba(255,255,255,.9)}
+
+/* results */
+.res-title.win,.res-title.lose{background-image:var(--chrome-txt);background-size:100% 100%;animation:none;-webkit-text-stroke:1.2px #1b2c66;
+  filter:drop-shadow(1px 1px 0 #a6b4d8) drop-shadow(1px 1px 0 #6a79a8) drop-shadow(2px 2px 0 #263466) drop-shadow(0 10px 18px rgba(8,40,120,.3))}
+.fprog{background:rgba(30,60,140,.12)}
+.sync b{color:var(--text)}
+
+.now{background:var(--surface);border:1px solid rgba(255,255,255,.95);border-radius:18px;padding:12px 14px 12px 18px;box-shadow:inset 0 1px 0 #fff,0 14px 30px -12px rgba(8,40,120,.4);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+.now .meta{color:var(--muted)}
+.eyebrow{color:#1d3a8f;text-shadow:0 1px 0 rgba(255,255,255,.7)}
+.bg .dots{opacity:.55}
+#game .gfoot .hint{color:#fff;text-shadow:0 1px 3px rgba(5,20,80,.8)}
+@media (max-width:520px){.logo{font-size:13.6vw}}
 </style>
 
-<div class="bg" aria-hidden="true"><div class="rays"></div><div class="mosaic"></div><div class="led led-a">DANCE</div><div class="led led-b">128 BPM</div><div class="vinyl"><div class="disc"></div></div></div>
+<div class="bg" aria-hidden="true"><div class="beams"></div><div class="sun"><i></i></div><div class="clouds"></div><div class="sea"></div><div class="dots"></div><span class="sp" style="--x:12%;--y:18%;--s:46px;--d:3.2s;animation-delay:-0.4s"></span><span class="sp" style="--x:30%;--y:8%;--s:28px;--d:2.6s;animation-delay:-1.1s"></span><span class="sp" style="--x:48%;--y:40%;--s:34px;--d:3.8s;animation-delay:-2s"></span><span class="sp" style="--x:83%;--y:12%;--s:40px;--d:2.9s;animation-delay:-0.7s"></span><span class="sp" style="--x:91%;--y:44%;--s:26px;--d:3.4s;animation-delay:-1.6s"></span><span class="sp" style="--x:57%;--y:15%;--s:22px;--d:2.4s;animation-delay:-0.2s"></span><span class="sp" style="--x:22%;--y:52%;--s:30px;--d:3.1s;animation-delay:-2.4s"></span><span class="sp" style="--x:74%;--y:66%;--s:38px;--d:2.7s;animation-delay:-1.3s"></span><span class="sp" style="--x:38%;--y:74%;--s:26px;--d:3.5s;animation-delay:-0.9s"></span><span class="sp" style="--x:8%;--y:80%;--s:34px;--d:3s;animation-delay:-1.8s"></span><span class="sp" style="--x:62%;--y:86%;--s:28px;--d:2.5s;animation-delay:-0.5s"></span><span class="sp" style="--x:96%;--y:72%;--s:24px;--d:3.3s;animation-delay:-2.1s"></span></div>
 
 <!-- START -->
 <section id="start" class="screen start">
@@ -618,7 +746,7 @@ function show(id){
 }
 const css = getComputedStyle(document.documentElement);
 const LANE_COL = ["--l0","--l1","--l2","--l3"].map(v => css.getPropertyValue(v).trim());
-const COL = { text: css.getPropertyValue("--text").trim(), muted: css.getPropertyValue("--muted").trim(), ink: css.getPropertyValue("--void").trim() };
+const COL = { text: "#eef3ff", muted: "#9ba8d9", ink: "#05061a" };   // lane and clip colours stay fixed whatever the page theme
 
 /* ================= AUDIO ================= */
 let ac, master, LIVE, R, audioReady = null, recDest = null;
@@ -986,88 +1114,94 @@ const ART = {
   Eurodance:["#ff2bd6","#ffd23f","#1a0636"], Club:["#49d9ff","#a57bff","#06101e"], Plugg:["#c9a2ff","#ffb3e6","#1a1030"], Hyperpop:["#c6ff3d","#ff2bd6","#140a1e"], Footwork:["#ffb23f","#3d5cff","#0d0a18"]
 };
 function coverArt(g){
+  // Y2K CGI album art: daylight sky and water, chrome spheres, sparkles, halftone dots
   const c = document.createElement("canvas"); c.width = c.height = 400;
   const x = c.getContext("2d"), r = rngFor("art" + g.name), W = 400;
-  let [a, b, bg] = ART[g.family] || ART.Glo;
-  const ALT = ["#ff2bd6","#19e8ff","#c6ff3d","#a86bff","#ffd23f","#ff5a3d","#5b8cff","#ffb3e6"];
-  if (r() < .5) a = ALT[Math.floor(r() * ALT.length)]; if (r() < .5) b = ALT[Math.floor(r() * ALT.length)];
-  const grd = x.createLinearGradient(0, 0, W, W); grd.addColorStop(0, bg); grd.addColorStop(1, "#000"); x.fillStyle = grd; x.fillRect(0, 0, W, W);
-  const glow = (cx, cy, rad, col, al) => { const rg = x.createRadialGradient(cx, cy, 0, cx, cy, rad); rg.addColorStop(0, col); rg.addColorStop(1, "transparent"); x.globalAlpha = al; x.fillStyle = rg; x.fillRect(0, 0, W, W); x.globalAlpha = 1; };
-  glow(80 + r() * 240, 60 + r() * 200, 260, a, .55); glow(r() * W, 200 + r() * 200, 220, b, .45);
-  x.save();
-  if (g.art === "waves"){
-    const sky = x.createLinearGradient(0, 0, W, W); sky.addColorStop(0, "#0a0630"); sky.addColorStop(.55, "#3a1a8a"); sky.addColorStop(1, "#ff7ab8"); x.fillStyle = sky; x.fillRect(0, 0, W, W);
-    glow(300, 120, 200, "#ffd6ef", .5);
-    x.lineWidth = 2.5;
-    for (let k = 0; k < 14; k++){
-      x.beginPath(); x.strokeStyle = `rgba(255,255,255,${.75 - k * .045})`;
-      for (let px = 0; px <= W; px += 4){ const y = 70 + k * 16 + Math.sin(px / (38 + k * 3) + k * .7) * (10 + k * 2.2) * Math.sin(px / W * Math.PI); px ? x.lineTo(px, y) : x.moveTo(px, y); }
-      x.stroke();
+  const lin = (x0, y0, x1, y1, stops) => { const gr = x.createLinearGradient(x0, y0, x1, y1); stops.forEach(([o, col]) => gr.addColorStop(o, col)); return gr; };
+  const glow = (cx, cy, rad, col, al) => { const rg = x.createRadialGradient(cx, cy, 0, cx, cy, rad); rg.addColorStop(0, col); rg.addColorStop(1, "rgba(255,255,255,0)"); x.globalAlpha = al; x.fillStyle = rg; x.fillRect(0, 0, W, W); x.globalAlpha = 1; };
+  const sparkle = (cx, cy, s, al = 1) => {
+    x.save(); x.globalAlpha = al; glow(cx, cy, s * .45, "#ffffff", .9 * al); x.globalAlpha = al;
+    for (const [dx, dy, len] of [[1, 0, s], [0, 1, s], [.7, .7, s * .38], [.7, -.7, s * .38]]){
+      const gr = x.createLinearGradient(cx - dx * len, cy - dy * len, cx + dx * len, cy + dy * len);
+      gr.addColorStop(0, "rgba(255,255,255,0)"); gr.addColorStop(.5, "#fff"); gr.addColorStop(1, "rgba(255,255,255,0)");
+      x.strokeStyle = gr; x.lineWidth = dx && dy ? 1.2 : 2; x.beginPath(); x.moveTo(cx - dx * len, cy - dy * len); x.lineTo(cx + dx * len, cy + dy * len); x.stroke();
     }
-  } else if (g.art === "rain"){
-    const sky = x.createLinearGradient(0, 0, 0, W); sky.addColorStop(0, "#04101e"); sky.addColorStop(.6, "#0b2a4a"); sky.addColorStop(1, "#123f5c"); x.fillStyle = sky; x.fillRect(0, 0, W, W);
-    glow(110, 300, 180, "#49d9ff", .45); glow(310, 260, 140, "#a57bff", .4);
-    x.fillStyle = "#03070f"; let bx = 0; while (bx < W){ const bw = 24 + r() * 40, bh = 60 + r() * 150; x.fillRect(bx, 330 - bh, bw, bh + 80); for (let wy = 330 - bh + 8; wy < 320; wy += 12) for (let wx = bx + 5; wx < bx + bw - 5; wx += 9) if (r() < .35){ x.fillStyle = r() < .5 ? "rgba(255,214,140,.8)" : "rgba(170,220,255,.7)"; x.fillRect(wx, wy, 3, 4); x.fillStyle = "#03070f"; } bx += bw + 2; }
-    x.strokeStyle = "rgba(190,230,255,.5)"; x.lineWidth = 1.2;
-    for (let k = 0; k < 160; k++){ const rx = r() * W, ry = r() * W, len = 10 + r() * 22; x.beginPath(); x.moveTo(rx, ry); x.lineTo(rx - len * .25, ry + len); x.stroke(); }
-  } else if (g.art === "orbit"){
-    const sky = x.createLinearGradient(0, 0, 0, W); sky.addColorStop(0, "#03041a"); sky.addColorStop(.6, "#151a6e"); sky.addColorStop(1, "#4d2aa8"); x.fillStyle = sky; x.fillRect(0, 0, W, W);
-    x.fillStyle = "#fff"; for (let k = 0; k < 90; k++){ x.globalAlpha = .2 + r() * .7; const sz = r() < .1 ? 2.5 : 1.3; x.fillRect(r() * W, r() * 300, sz, sz); } x.globalAlpha = 1;
-    x.save(); x.translate(200, 165); x.rotate(-.35); x.scale(1, .32);
-    for (let k = 0; k < 3; k++){ x.beginPath(); x.arc(0, 0, 120 + k * 22, 0, Math.PI * 2); x.strokeStyle = k ? "rgba(140,180,255,.35)" : "rgba(220,235,255,.9)"; x.lineWidth = k ? 2 : 4; x.stroke(); }
     x.restore();
-    glow(200, 165, 120, "#bfe0ff", .9); glow(200, 165, 40, "#ffffff", 1);
-    x.fillStyle = "#fff"; x.beginPath(); x.arc(200, 165, 9, 0, Math.PI * 2); x.fill();
-    x.fillStyle = "rgba(255,255,255,.07)"; for (let y = 0; y < W; y += 4) x.fillRect(0, y, W, 1);
-  } else if (g.family === "Eurodance"){
-    const sky = x.createLinearGradient(0, 0, 0, 260); sky.addColorStop(0, "#05061a"); sky.addColorStop(.7, "#1b2a8a"); sky.addColorStop(1, "#7fb2ff"); x.fillStyle = sky; x.fillRect(0, 0, W, 260);
-    x.fillStyle = "#fff"; for (let k = 0; k < 60; k++){ x.globalAlpha = .3 + r() * .7; x.fillRect(r() * W, r() * 170, 1.5, 1.5); } x.globalAlpha = 1;
-    const sun = x.createLinearGradient(0, 120, 0, 260); sun.addColorStop(0, "#ffffff"); sun.addColorStop(1, "#8fbcff");
-    x.save(); x.beginPath(); x.arc(200, 250, 105, Math.PI, 0); x.closePath(); x.clip(); x.fillStyle = sun; x.fillRect(80, 140, 240, 120);
-    x.fillStyle = "#1b2a8a"; for (let k = 0; k < 6; k++) x.fillRect(80, 200 + k * 10, 240, 2 + k * 1.2); x.restore();
-    x.fillStyle = "#04051a"; x.fillRect(0, 250, W, 150);
-    x.strokeStyle = "#6f9bff"; x.lineWidth = 1.5; x.globalAlpha = .8;
-    for (let k = 0; k < 9; k++){ const y = 252 + Math.pow(k / 8, 2) * 150; x.beginPath(); x.moveTo(0, y); x.lineTo(W, y); x.stroke(); }
-    for (let k = -10; k <= 10; k++){ x.beginPath(); x.moveTo(200 + k * 12, 252); x.lineTo(200 + k * 70, 400); x.stroke(); }
-    x.globalAlpha = 1;
-  } else if (g.family === "Glo" && r() < .55){
-    const cx = 100 + r() * 200, cy = 90 + r() * 120, n = 18 + Math.floor(r() * 18);
-    for (let k = 0; k < n; k++){ const ang = k / n * Math.PI * 2 + r() * .1, len = 60 + r() * 200; const ch = x.createLinearGradient(cx, cy, cx + Math.cos(ang) * len, cy + Math.sin(ang) * len); ch.addColorStop(0, "#fff"); ch.addColorStop(.6, k % 2 ? a : "#aab0dc"); ch.addColorStop(1, "transparent"); x.strokeStyle = ch; x.lineWidth = 2 + r() * 5; x.beginPath(); x.moveTo(cx, cy); x.lineTo(cx + Math.cos(ang) * len, cy + Math.sin(ang) * len); x.stroke(); }
-    glow(cx, cy, 70, "#fff", .7);
-  } else if (g.family === "Glo"){
-    const cx = 120 + r() * 160, cy = 110 + r() * 120;
-    for (let k = 0; k < 6; k++){ const ch = x.createLinearGradient(0, cy - 120, 0, cy + 120); ch.addColorStop(0, "#fff"); ch.addColorStop(.5, "#5d6192"); ch.addColorStop(1, "#e3e6ff"); x.strokeStyle = ch; x.globalAlpha = .9 - k * .13; x.lineWidth = 10 - k; x.beginPath(); x.arc(cx, cy, 40 + k * 26, 0, Math.PI * 2); x.stroke(); }
-    x.globalAlpha = 1; x.fillStyle = "#fff"; for (let k = 0; k < 14; k++){ const sx = r() * W, sy = r() * 280, sz = 2 + r() * 5; x.fillRect(sx - sz, sy, sz * 2, 1.5); x.fillRect(sx, sy - sz, 1.5, sz * 2); }
-  } else if (g.family === "Rage"){
-    x.strokeStyle = a; x.lineWidth = 3; x.globalAlpha = .8;
-    for (let k = 0; k < 9; k++){ x.beginPath(); let px = r() * W, py = r() * 300; x.moveTo(px, py); for (let q = 0; q < 10; q++){ px += (r() - .5) * 120; py += (r() - .5) * 120; x.lineTo(px, py); } x.stroke(); }
-    x.globalAlpha = .18; x.fillStyle = "#fff"; for (let k = 0; k < 1400; k++) x.fillRect(r() * W, r() * W, 1, 1);
-  } else if (g.family === "Jersey"){
-    const n = 7, sp = W / n;
-    for (let i = 0; i < n; i++) for (let j = 0; j < n; j++){ const s2 = (Math.sin(i * .9 + j * .6 + r() * 6) + 1) / 2; x.fillStyle = (i + j) % 2 ? a : b; x.globalAlpha = .25 + s2 * .6; x.beginPath(); x.arc(sp * (i + .5), sp * (j + .5), 4 + s2 * sp * .38, 0, Math.PI * 2); x.fill(); }
-  } else if (g.family === "Drill"){
-    x.strokeStyle = a; x.globalAlpha = .35; x.lineWidth = 1.5; for (let k = -W; k < W; k += 14){ x.beginPath(); x.moveTo(k, 0); x.lineTo(k + W, W); x.stroke(); }
-    x.globalAlpha = .85; x.fillStyle = b; x.beginPath(); const px = 60 + r() * 200; x.moveTo(px, 40); x.lineTo(px + 140, 140 + r() * 60); x.lineTo(px + 30, 300); x.closePath(); x.fill();
-  } else if (g.family === "Plugg"){
-    for (let k = 0; k < 6; k++) glow(r() * W, r() * 300, 60 + r() * 80, k % 2 ? a : b, .35);
-    x.fillStyle = "#fff";
-    for (let k = 0; k < 22; k++){ const sx = r() * W, sy = r() * 300, sz = 2 + r() * 9; x.globalAlpha = .5 + r() * .5; x.beginPath(); x.moveTo(sx, sy - sz); x.quadraticCurveTo(sx, sy, sx + sz, sy); x.quadraticCurveTo(sx, sy, sx, sy + sz); x.quadraticCurveTo(sx, sy, sx - sz, sy); x.quadraticCurveTo(sx, sy, sx, sy - sz); x.fill(); }
-  } else if (g.family === "Hyperpop"){
-    const t = 40; for (let i = 0; i < 10; i++) for (let j = 0; j < 10; j++){ if ((i + j) % 2) continue; x.fillStyle = j < 5 ? a : b; x.globalAlpha = .22; x.fillRect(i * t, j * t + Math.sin(i) * 8, t, t); }
-    x.globalAlpha = .95; const px = 8, hx = 110 + r() * 120, hy = 70 + r() * 80, H = ["01100110","11111111","11111111","01111110","00111100","00011000"];
-    H.forEach((row, ry) => [...row].forEach((ch, rx) => { if (ch === "1"){ x.fillStyle = ry < 2 ? "#fff" : b; x.fillRect(hx + rx * px * 2, hy + ry * px * 2, px * 2, px * 2); } }));
+  };
+  const sphere = (cx, cy, R, mid, dark) => {
+    const b = x.createRadialGradient(cx - R * .35, cy - R * .4, R * .05, cx, cy, R);
+    b.addColorStop(0, "#ffffff"); b.addColorStop(.25, mid); b.addColorStop(.62, dark); b.addColorStop(.86, mid); b.addColorStop(1, "#e9f3ff");
+    x.fillStyle = b; x.beginPath(); x.arc(cx, cy, R, 0, Math.PI * 2); x.fill();
+    x.fillStyle = "rgba(255,255,255,.55)"; x.beginPath(); x.ellipse(cx - R * .32, cy - R * .45, R * .34, R * .17, -.5, 0, Math.PI * 2); x.fill();
+  };
+  const dots = (x0, y0, w, h, step, col) => { x.fillStyle = col; for (let yy = y0; yy < y0 + h; yy += step) for (let xx = x0; xx < x0 + w; xx += step){ const k = 1 - (xx - x0) / w; if (k <= .05) continue; x.beginPath(); x.arc(xx, yy, step * .42 * k, 0, Math.PI * 2); x.fill(); } };
+  const sea = (top, a, b) => {
+    x.fillStyle = lin(0, top, 0, W, [[0, a], [1, b]]); x.fillRect(0, top, W, W - top);
+    x.fillStyle = "rgba(255,255,255,.22)"; for (let yy = top + 4, k = 0; yy < W; yy += 6 + k * 1.6, k++) x.fillRect(0, yy, W, 1 + k * .15);
+  };
+  if (g.family === "Eurodance" && g.art !== "orbit"){
+    // sun flare over open water
+    x.fillStyle = lin(0, 0, 0, 240, [[0, "#4aa6ff"], [.7, "#bfe6ff"], [1, "#f4fbff"]]); x.fillRect(0, 0, W, 240);
+    sea(240, "#6fb8f4", "#0c3c9c");
+    glow(262, 150, 210, "#fff3c4", .85); glow(262, 150, 90, "#ffd66b", .55); glow(262, 150, 40, "#ffffff", 1);
+    x.globalAlpha = .55; x.fillStyle = lin(0, 240, 0, 400, [[0, "#ffffff"], [1, "rgba(255,255,255,0)"]]); x.beginPath(); x.moveTo(240, 240); x.lineTo(284, 240); x.lineTo(330, 400); x.lineTo(196, 400); x.fill(); x.globalAlpha = 1;
+    sparkle(262, 150, 150); dots(0, 0, 150, 230, 20, "rgba(255,255,255,.7)");
+    for (let k = 0; k < 6; k++) sparkle(30 + r() * 340, 20 + r() * 200, 10 + r() * 16, .8);
+  } else if (g.art === "orbit"){
+    // metallic-blue handset plastic, pearl orbit rings round a chrome sphere
+    x.fillStyle = lin(0, 0, W, W, [[0, "#6f93e8"], [.45, "#2f4fa8"], [1, "#132a6e"]]); x.fillRect(0, 0, W, W);
+    x.fillStyle = lin(0, 0, W, 0, [[0, "rgba(255,255,255,.0)"], [.5, "rgba(255,255,255,.18)"], [1, "rgba(255,255,255,0)"]]);
+    x.beginPath(); x.moveTo(0, 90); x.bezierCurveTo(140, 20, 260, 160, 400, 60); x.lineTo(400, 110); x.bezierCurveTo(260, 210, 140, 70, 0, 140); x.fill();
+    dots(250, 10, 150, 120, 16, "rgba(255,255,255,.35)");
+    x.save(); x.translate(200, 170); x.rotate(-.35); x.scale(1, .3);
+    for (let k = 0; k < 3; k++){ x.beginPath(); x.arc(0, 0, 128 + k * 24, Math.PI, Math.PI * 2); x.strokeStyle = k ? "rgba(245,230,220,.45)" : "#f6ece4"; x.lineWidth = k ? 3 : 7; x.stroke(); }
+    x.restore();
+    sphere(200, 170, 64, "#9fc0ff", "#1d3a8c");
+    x.save(); x.translate(200, 170); x.rotate(-.35); x.scale(1, .3);
+    for (let k = 0; k < 3; k++){ x.beginPath(); x.arc(0, 0, 128 + k * 24, 0, Math.PI); x.strokeStyle = k ? "rgba(245,230,220,.45)" : "#f6ece4"; x.lineWidth = k ? 3 : 7; x.stroke(); }
+    x.restore();
+    sparkle(250, 120, 60); for (let k = 0; k < 7; k++) sparkle(20 + r() * 360, 20 + r() * 230, 8 + r() * 14, .85);
+  } else if (g.art === "waves"){
+    // pink sky, pearl clouds, silver ribbons and floating bubbles
+    x.fillStyle = lin(0, 0, 0, W, [[0, "#ff8fc0"], [.5, "#ffc6de"], [1, "#fff2f8"]]); x.fillRect(0, 0, W, W);
+    glow(300, 90, 160, "#ffffff", .55);
+    x.lineCap = "round";
+    for (let k = 0; k < 4; k++){
+      const y0 = 60 + k * 50, bend = 70 + k * 20;
+      x.strokeStyle = lin(0, y0 - 40, 0, y0 + 60, [[0, "#ffffff"], [.5, "#9aa7c9"], [1, "#f4f6ff"]]); x.lineWidth = 9 - k * 1.5;
+      x.beginPath(); x.moveTo(-20, y0 + 40); x.bezierCurveTo(120, y0 - bend, 260, y0 + bend, 420, y0 - 20); x.stroke();
+    }
+    for (const [cx, cy, R, mid, dark] of [[86, 92, 30, "#c9f0d2", "#5aa877"], [318, 168, 20, "#cfe0ff", "#6a86c8"], [150, 205, 13, "#ffe0f0", "#c77aa3"]]){ x.globalAlpha = .9; sphere(cx, cy, R, mid, dark); x.globalAlpha = 1; }
+    for (let k = 0; k < 9; k++){ const cx = r() * W, R = 30 + r() * 40, cy = 300 + r() * 50; const cl = x.createRadialGradient(cx - R * .3, cy - R * .4, R * .1, cx, cy, R); cl.addColorStop(0, "#ffffff"); cl.addColorStop(.7, "#f3f0f8"); cl.addColorStop(1, "#d9d3e6"); x.fillStyle = cl; x.beginPath(); x.arc(cx, cy, R, 0, Math.PI * 2); x.fill(); }
+    x.fillStyle = "#f6f2fa"; x.fillRect(0, 340, W, 60);
+    for (let k = 0; k < 6; k++) sparkle(20 + r() * 360, 20 + r() * 230, 8 + r() * 14, .9);
   } else {
-    for (let k = 0; k < 9; k++){ const y = 30 + k * 30, w = 60 + r() * 260; x.fillStyle = k % 3 === 0 ? a : b; x.globalAlpha = .75; x.beginPath(); if (x.roundRect) x.roundRect(20 + (k % 3) * 20, y, w, 18, 9); else x.rect(20, y, w, 18); x.fill(); }
+    // after the rain: pale silver sky, liquid-chrome drops falling into calm water
+    x.fillStyle = lin(0, 0, 0, 250, [[0, "#9fd2ff"], [1, "#eef8ff"]]); x.fillRect(0, 0, W, 250);
+    sea(250, "#86c4f2", "#1a56b8");
+    x.strokeStyle = "rgba(255,255,255,.75)"; x.lineWidth = 1.3;
+    for (let k = 0; k < 70; k++){ const rx = r() * W, ry = r() * 240, len = 8 + r() * 18; x.beginPath(); x.moveTo(rx, ry); x.lineTo(rx - len * .2, ry + len); x.stroke(); }
+    for (let k = 0; k < 5; k++){ const cx = 50 + r() * 300, cy = 290 + r() * 80, rr2 = 18 + r() * 34; for (let q = 0; q < 3; q++){ x.strokeStyle = `rgba(255,255,255,${.55 - q * .15})`; x.lineWidth = 1.5; x.beginPath(); x.ellipse(cx, cy, rr2 + q * 14, (rr2 + q * 14) * .25, 0, 0, Math.PI * 2); x.stroke(); } }
+    for (const [cx, cy, R] of [[130, 120, 26], [262, 70, 17], [300, 175, 22], [76, 215, 12]]){
+      x.save(); x.beginPath(); x.moveTo(cx, cy - R * 2.1); x.bezierCurveTo(cx + R * .25, cy - R * 1.2, cx + R, cy - R * .6, cx + R, cy); x.arc(cx, cy, R, 0, Math.PI); x.bezierCurveTo(cx - R, cy - R * .6, cx - R * .25, cy - R * 1.2, cx, cy - R * 2.1); x.clip();
+      sphere(cx, cy - R * .2, R * 1.6, "#c4dcff", "#2c4f9e"); x.restore();
+    }
+    sparkle(300, 60, 70); dots(0, 0, 140, 200, 18, "rgba(255,255,255,.6)");
   }
-  x.restore();
-  const fade = x.createLinearGradient(0, 250, 0, W); fade.addColorStop(0, "transparent"); fade.addColorStop(1, "rgba(0,0,0,.75)"); x.fillStyle = fade; x.fillRect(0, 250, W, 150);
-  x.fillStyle = "#fff"; x.textBaseline = "alphabetic";
+  // title: chrome lettering with a navy outline over a soft navy fade
+  x.fillStyle = lin(0, 230, 0, W, [[0, "rgba(10,30,90,0)"], [1, g.art === "waves" ? "rgba(70,40,110,.38)" : "rgba(10,30,90,.6)"]]); x.fillRect(0, 230, W, 170);
+  x.textBaseline = "alphabetic";
   let fs = 46; x.font = `900 ${fs}px Unbounded, "Arial Black", sans-serif`;
   const words = g.name.toUpperCase().split(" "), lines = words.length > 1 ? [words.slice(0, Math.ceil(words.length / 2)).join(" "), words.slice(Math.ceil(words.length / 2)).join(" ")] : words;
   while (lines.some(l => x.measureText(l).width > 350) && fs > 22){ fs -= 2; x.font = `900 ${fs}px Unbounded, "Arial Black", sans-serif`; }
-  lines.forEach((l, k) => x.fillText(l, 24, 376 - (lines.length - 1 - k) * (fs * .98)));
-  x.font = '15px "Share Tech Mono", monospace'; x.globalAlpha = .85; x.textAlign = "right"; x.fillText(`${bpmLabel(g)} BPM`, 378, 34); x.textAlign = "left"; x.fillText(g.artist ? g.artist.toUpperCase() : "MINI MANIA", 24, 34);
-  return c.toDataURL("image/jpeg", .86);
+  lines.forEach((l, k) => {
+    const y = 376 - (lines.length - 1 - k) * (fs * .98);
+    x.lineJoin = "round"; x.strokeStyle = "#16245a"; x.lineWidth = Math.max(4, fs * .14); x.strokeText(l, 24, y);
+    x.fillStyle = lin(0, y - fs * .8, 0, y + 2, [[0, "#ffffff"], [.45, "#cfe2ff"], [.52, "#2a4a9e"], [.62, "#8fb2ec"], [1, "#ffffff"]]); x.fillText(l, 24, y);
+  });
+  x.font = '15px "Share Tech Mono", monospace'; x.fillStyle = "#fff"; x.shadowColor = "rgba(10,30,90,.7)"; x.shadowBlur = 4;
+  x.textAlign = "right"; x.fillText(`${bpmLabel(g)} BPM`, 378, 34); x.textAlign = "left"; x.fillText(g.artist ? g.artist.toUpperCase() : "MINI MANIA", 24, 34); x.shadowBlur = 0;
+  return c.toDataURL("image/jpeg", .88);
 }
 let deckIds = [];
 function deckIndex(){ return Math.max(0, deckIds.indexOf(profile.genre)); }
