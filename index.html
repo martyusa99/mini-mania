@@ -250,9 +250,7 @@ kbd{font-family:var(--mono);font-size:12px;background:rgba(0,0,0,.4);border:1px 
 .meter::after{content:"";position:absolute;left:50%;top:0;bottom:0;width:2px;background:var(--void)}
 .progress{height:2px;background:rgba(255,255,255,.07);border-radius:1px;overflow:hidden}
 .progress i{display:block;height:100%;width:0;background:var(--muted)}
-.stage{flex:1;min-height:0;max-width:580px;width:100%;margin:0 auto;position:relative;z-index:1}
-#dc{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0}
-.vsbar,.gfoot,.camwrap{position:relative;z-index:1}
+.stage{flex:1;min-height:0;max-width:580px;width:100%;margin:0 auto;position:relative}
 /* live face-cam: the bottom of the split, like the recorded clip */
 #game.with-cam .stage{flex:1.45}
 .camwrap{flex:1;min-height:0;max-width:580px;width:100%;margin:0 auto;position:relative;border-radius:18px;overflow:hidden;border:1px solid var(--line2);background:#000}
@@ -399,7 +397,6 @@ label.btn{cursor:pointer;display:inline-block}
 
 <!-- GAME -->
 <section id="game" class="screen" hidden>
-  <canvas id="dc" aria-hidden="true"></canvas>
   <div class="vsbar">
     <div class="scores">
       <div class="side you"><span class="h" id="gYou">@you</span><span class="num" id="gYouScore">0</span><span class="cmb" id="gYouCombo">×1 · 0 combo</span><div class="heat"><i id="gYouHeat"></i></div></div>
@@ -1278,7 +1275,7 @@ const barAt = t => Math.floor(t / game.bar) - INTRO_BARS;
 function award(p, j, isYou){
   p.counts[j]++;
   const before = multOf(p);
-  if (j === "miss"){ p.combo = 0; if (isYou) game.lastMiss = performance.now(); } else { p.combo++; p.max = Math.max(p.max, p.combo); }
+  if (j === "miss") p.combo = 0; else { p.combo++; p.max = Math.max(p.max, p.combo); }
   const m = multOf(p); p.peakMult = Math.max(p.peakMult, m);
   if (isYou && m > before) game.banners.push({ text: `×${m} multiplier`, up: true, at: performance.now() });
   p.score += PTS[j] * m;
@@ -1295,7 +1292,7 @@ function press(lane){
   if (best && bd <= WIN.good){
     const j = bd <= WIN.perfect ? "perfect" : bd <= WIN.great ? "great" : "good";
     best.judged = true; best.hit = true; best.hitAt = performance.now();
-    award(game.you, j, true); gate(lane, true); game.lastHit = performance.now();
+    award(game.you, j, true); gate(lane, true);
     const now = ac.currentTime, bar = barAt(best.t), o = best.o;
     if (best.dur){
       const v = holdVoice(game.gid, lane, now, bar, o); v.pump(now + .08);
@@ -1323,7 +1320,7 @@ function finishHold(lane, done){
   h.n.state = done ? "done" : "dropped";
   const p = game.you;
   if (done){ p.streaks++; p.combo++; p.max = Math.max(p.max, p.combo); p.score += 150 * multOf(p); popup("held!", lane); }
-  else { p.combo = 0; gate(lane, false); popup("dropped", lane); game.lastMiss = performance.now(); }
+  else { p.combo = 0; gate(lane, false); popup("dropped", lane); }
   p.rec.holds.push({ t: h.start, lane, held, done, o: h.o });
 }
 function holdTick(t){
@@ -1378,7 +1375,7 @@ function frame(){
     if (n.t > t) break;
     if (!n.judged && n.t < t - WIN.good){ n.judged = true; n.state = n.dur ? "dropped" : null; award(game.you, "miss", true); gate(n.lane, false); popup("miss", n.lane); }
   }
-  holdTick(t); botStep(t); updateHud(t); drawDancers(t); draw(t);
+  holdTick(t); botStep(t); updateHud(t); draw(t);
   if (REC.recorder) drawRec(t);
   if (t > game.end) return finish();
   raf = requestAnimationFrame(frame);
@@ -1386,7 +1383,6 @@ function frame(){
 function resize(){
   const dpr = Math.min(window.devicePixelRatio || 1, 2), r = cv.getBoundingClientRect();
   cv.width = Math.max(1, Math.round(r.width * dpr)); cv.height = Math.max(1, Math.round(r.height * dpr));
-  if (typeof sizeDancers === "function") sizeDancers();
 }
 window.addEventListener("resize", () => { if (!$("game").hidden) resize(); });
 const ARROW_ROT = [-Math.PI / 2, Math.PI, 0, Math.PI / 2], KEY_LETTER = ["D", "F", "J", "K"];
@@ -1396,140 +1392,6 @@ function arrowPath(cx, cy, size, lane){
   g2.restore();
 }
 function rr(x, y, w, h, r){ g2.beginPath(); if (g2.roundRect) g2.roundRect(x, y, w, h, Math.max(0, Math.min(r, w / 2, h / 2))); else g2.rect(x, y, w, h); }
-/* ---------- background dancers: an original Y2K raver crew that dances on the song's beat grid ---------- */
-const DANCE_PAL = [
-  { jacket:"#38d6ff", jacketHi:"#b5f3ff", pants:"#2a1f6b", hair:"#ff4fd8", visor:"#c6ff3d", phones:"#ff9f2e", skin:"#c68863", sole:"#ff4fd8" },
-  { jacket:"#ff4fd8", jacketHi:"#ffc2f1", pants:"#1d2a6b", hair:"#38d6ff", visor:"#ff9f2e", phones:"#c6ff3d", skin:"#8d5a3b", sole:"#38d6ff" },
-];
-const D_INK = "#0a0820", TAU = Math.PI * 2;
-const sstep = x => { x = Math.max(0, Math.min(1, x)); return x * x * (3 - 2 * x); };
-const lerpN = (a, b, k) => a + (b - a) * k;
-const lerp2 = (a, b, k) => [lerpN(a[0], b[0], k), lerpN(a[1], b[1], k)];
-function lerpPose(A, B, k){
-  const o = {}; for (const key in A) o[key] = Array.isArray(A[key]) ? lerp2(A[key], B[key], k) : lerpN(A[key], B[key], k); return o;
-}
-// hands are relative to their own shoulder, feet are [x from centre, lift]; units are head-heights
-const REST = { hx:0, drop:0, lean:0, tilt:0, fl:[-.7, 0], fr:[.7, 0], hl:[.12, 2.3], hr:[-.12, 2.3] };
-const MOVES = [
-  function pump(p, f, b, bn){ const odd = b % 2, up = -1.9 + .9 * (1 - bn), hip = 2.35;
-    return { hx:0, drop:.38 * bn, lean:0, tilt:.12 * bn * (odd ? -1 : 1), fl:[-.62, 0], fr:[.62, 0], hl: odd ? [-.3, up] : [.25, hip], hr: odd ? [-.25, hip] : [.3, up] }; },
-  function step(p, f, b, bn){ const c = Math.cos(Math.PI * p), wl = Math.max(0, c), wr = Math.max(0, -c), mid = Math.sin(Math.PI * f);
-    return { hx:.5 * c, drop:.26 * bn, lean:-.08 * c, tilt:-.1 * c, fl:[-.66 + .4 * wl, .3 * wl * mid], fr:[.66 - .4 * wr, .3 * wr * mid], hl:[.35 + .35 * c, 1.5], hr:[-.35 + .35 * c, 1.5] }; },
-  function handsUp(p, f, b, bn){ const s = Math.sin(Math.PI * p / 2);
-    return { hx:.4 * s, drop:.22 * bn, lean:.1 * s, tilt:.14 * s, fl:[-.7, 0], fr:[.7, 0], hl:[-.5 + .45 * s, -2.3 + .25 * bn], hr:[.5 + .45 * s, -2.3 + .25 * bn] }; },
-  function kneeUp(p, f, b, bn){ const odd = b % 2, l = Math.sin(Math.PI * f);
-    return { hx:0, drop:.3 * bn, lean:.04, tilt:.08 * (odd ? 1 : -1), fl:[-.45, odd ? 0 : 1.1 * l], fr:[.45, odd ? 1.1 * l : 0], hl:[.35, 1.15 - (odd ? 1 : 0) * l], hr:[-.35, 1.15 - (odd ? 0 : 1) * l] }; },
-  function point(p, f, b, bn){
-    const side = Math.floor(p / 2) % 2, k = sstep((p % 2) / .3);
-    const pose = s => ({ hx:.22 * (s ? 1 : -1), drop:.3 * bn, lean:.07 * (s ? 1 : -1), tilt:.16 * (s ? 1 : -1), fl:[-.62, 0], fr:[.62, 0], hl: s ? [.25, 2.35] : [-1.25, -1.6], hr: s ? [1.25, -1.6] : [-.25, 2.35] });
-    return lerpPose(pose(1 - side), pose(side), k); },
-];
-const MOVE_ORDER = [0, 1, 2, 3, 4, 2];
-function dancePose(p, E, miss){
-  const f = ((p % 1) + 1) % 1, b = Math.floor(p), bn = Math.pow(.5 + .5 * Math.cos(TAU * f), 2);
-  const block = Math.floor(p / 8), q = p - block * 8;
-  const mv = i => MOVES[MOVE_ORDER[((i % MOVE_ORDER.length) + MOVE_ORDER.length) % MOVE_ORDER.length]];
-  let P = mv(block)(p, f, b, bn);
-  if (q < 1) P = lerpPose(mv(block - 1)(p, f, b, bn), P, sstep(q));
-  P = lerpPose(REST, P, E);
-  if (miss > 0){ P.drop += .45 * miss; P.lean += .22 * miss; P.tilt -= .35 * miss; P.hl = lerp2(P.hl, [.55, -.2], miss); P.hr = lerp2(P.hr, [-.2, 2.2], miss); }
-  return P;
-}
-function ik(ax, ay, tx, ty, l1, l2, out, cx){
-  let dx = tx - ax, dy = ty - ay, d = Math.hypot(dx, dy); const mx = (l1 + l2) * .999, mn = Math.abs(l1 - l2) + .001;
-  if (d > mx){ tx = ax + dx / d * mx; ty = ay + dy / d * mx; d = mx; } if (d < mn) d = mn;
-  const th = Math.atan2(ty - ay, tx - ax), a = Math.acos(Math.max(-1, Math.min(1, (l1 * l1 + d * d - l2 * l2) / (2 * l1 * d))));
-  const j1 = [ax + l1 * Math.cos(th + a), ay + l1 * Math.sin(th + a)], j2 = [ax + l1 * Math.cos(th - a), ay + l1 * Math.sin(th - a)];
-  return { j: out * (j1[0] - cx) > out * (j2[0] - cx) ? j1 : j2, e: [tx, ty] };
-}
-function capsule(c, a, b, w, col, o){
-  c.lineCap = "round"; c.beginPath(); c.moveTo(a[0], a[1]); c.lineTo(b[0], b[1]);
-  c.strokeStyle = D_INK; c.lineWidth = w + 2 * o; c.stroke(); c.strokeStyle = col; c.lineWidth = w; c.stroke();
-}
-function blob(c, pts, col, o){
-  c.beginPath(); pts.forEach((q, i) => i ? c.lineTo(q[0], q[1]) : c.moveTo(q[0], q[1])); c.closePath();
-  c.lineJoin = "round"; c.strokeStyle = D_INK; c.lineWidth = 2 * o + o * 3; c.stroke(); c.fillStyle = col; c.fill(); c.strokeStyle = col; c.lineWidth = o * 3; c.stroke();
-}
-function circ(c, x, y, r, col, o){ c.beginPath(); c.arc(x, y, r, 0, TAU); c.fillStyle = D_INK; c.fill(); c.beginPath(); c.arc(x, y, Math.max(0, r - o), 0, TAU); c.fillStyle = col; c.fill(); }
-/* c: context, cx/floor: feet position, h: full height, pal: colours, p: beat position, E: energy 0..1, miss: 0..1, lit: 0..1 visor flash, mirror: flip moves */
-function drawDancer(c, cx, floor, h, pal, p, E, miss, lit, mirror){
-  const u = h / 8.4, o = Math.max(1, u * .07), P = dancePose(p, E, miss), m = mirror ? -1 : 1;
-  const hx = P.hx * m, lean = P.lean * m, tilt = P.tilt * m;
-  const fl = mirror ? [-P.fr[0], P.fr[1]] : P.fl, fr = mirror ? [-P.fl[0], P.fl[1]] : P.fr;
-  const hl = mirror ? [-P.hr[0], P.hr[1]] : P.hl, hr = mirror ? [-P.hl[0], P.hl[1]] : P.hr;
-  const hip = [cx + hx * u, floor - (3.45 - P.drop) * u], cs = Math.cos(lean), sn = Math.sin(lean);
-  const B = (x, y) => [hip[0] + (x * cs - y * sn) * u, hip[1] + (x * sn + y * cs) * u];
-  // floor glow, pulsing on the beat
-  const f = ((p % 1) + 1) % 1, pulse = .5 + .5 * Math.cos(TAU * f);
-  const gl = c.createRadialGradient(cx, floor, 0, cx, floor, 2.4 * u); gl.addColorStop(0, pal.jacket + Math.round(40 + 60 * pulse * E).toString(16).padStart(2, "0")); gl.addColorStop(1, pal.jacket + "00");
-  c.fillStyle = gl; c.beginPath(); c.ellipse(cx, floor, 2.4 * u, .55 * u, 0, 0, TAU); c.fill();
-  c.fillStyle = "rgba(0,0,0,.35)"; c.beginPath(); c.ellipse(cx, floor + .05 * u, 1.3 * u, .2 * u, 0, 0, TAU); c.fill();
-  // legs
-  const legs = [[B(-.42, 0), [cx + fl[0] * u, floor - (.22 + fl[1]) * u], -1], [B(.42, 0), [cx + fr[0] * u, floor - (.22 + fr[1]) * u], 1]];
-  for (const [a, t, side] of legs){
-    const r = ik(a[0], a[1], t[0], t[1], 1.75 * u, 1.72 * u, side, hip[0]);
-    capsule(c, a, r.j, .78 * u, pal.pants, o); capsule(c, r.j, r.e, .7 * u, pal.pants, o);
-    const sx = r.e[0] + side * .12 * u, sy = r.e[1] + .1 * u;
-    c.fillStyle = D_INK; rrc(c, sx - .55 * u - o, sy - .2 * u - o, 1.1 * u + 2 * o, .45 * u + 2 * o, .2 * u); c.fill();
-    c.fillStyle = "#f4f2ff"; rrc(c, sx - .55 * u, sy - .2 * u, 1.1 * u, .45 * u, .2 * u); c.fill();
-    c.fillStyle = pal.sole; c.fillRect(sx - .55 * u, sy + .1 * u, 1.1 * u, .15 * u);
-  }
-  // pelvis + puffer jacket
-  blob(c, [B(-.62, .15), B(.62, .15), B(.56, -.75), B(-.56, -.75)], pal.pants, o);
-  blob(c, [B(-.62, -.55), B(.62, -.55), B(.92, -2.5), B(.35, -2.75), B(-.35, -2.75), B(-.92, -2.5)], pal.jacket, o);
-  c.strokeStyle = "rgba(10,8,32,.35)"; c.lineWidth = o * 1.2; c.lineCap = "round";
-  for (const y of [-1.2, -1.85]){ const a = B(-.7, y), b2 = B(.7, y); c.beginPath(); c.moveTo(a[0], a[1]); c.lineTo(b2[0], b2[1]); c.stroke(); }
-  const zt = B(0, -2.7), zb = B(0, -.6); c.beginPath(); c.moveTo(zt[0], zt[1]); c.lineTo(zb[0], zb[1]); c.stroke();
-  c.strokeStyle = pal.jacketHi; c.lineWidth = .12 * u; const h1 = B(-.6, -2.35), h2 = B(-.5, -.9); c.beginPath(); c.moveTo(h1[0], h1[1]); c.lineTo(h2[0], h2[1]); c.stroke();
-  // head: neck, buns, face, visor, headphones
-  const neck = B(0, -2.7), ha = lean + tilt, hc = [neck[0] + Math.sin(ha) * .8 * u, neck[1] - Math.cos(ha) * .8 * u];
-  const Hd = (x, y) => [hc[0] + (x * Math.cos(ha) - y * Math.sin(ha)) * u, hc[1] + (x * Math.sin(ha) + y * Math.cos(ha)) * u];
-  capsule(c, neck, Hd(0, .3), .32 * u, pal.skin, o);
-  for (const s of [-1, 1]){ const q = Hd(s * .5, -.62); circ(c, q[0], q[1], .36 * u, pal.hair, o); }
-  circ(c, hc[0], hc[1], .6 * u, pal.skin, o);
-  c.save(); c.translate(hc[0], hc[1]); c.rotate(ha);
-  c.beginPath(); c.arc(0, 0, .6 * u - o, Math.PI * 1.02, Math.PI * 1.98); c.quadraticCurveTo(.2 * u, -.1 * u, -.55 * u, -.12 * u); c.closePath(); c.fillStyle = pal.hair; c.fill();
-  const vg = lit * .8 + .2;
-  c.shadowColor = pal.visor; c.shadowBlur = (6 + 18 * vg) * Math.max(1, u / 30);
-  c.fillStyle = D_INK; rrc(c, -.7 * u - o, -.05 * u - o, 1.4 * u + 2 * o, .36 * u + 2 * o, .18 * u); c.fill();
-  c.fillStyle = pal.visor; rrc(c, -.7 * u, -.05 * u, 1.4 * u, .36 * u, .18 * u); c.fill(); c.shadowBlur = 0;
-  c.fillStyle = `rgba(255,255,255,${.35 + .5 * lit})`; rrc(c, -.5 * u, .01 * u, .55 * u, .08 * u, .04 * u); c.fill();
-  c.strokeStyle = D_INK; c.lineWidth = o * 1.2; c.beginPath(); c.arc(0, .3 * u, .16 * u, .2 * Math.PI, .8 * Math.PI); c.stroke();
-  c.strokeStyle = D_INK; c.lineWidth = .16 * u + 2 * o; c.beginPath(); c.arc(0, -.02 * u, .7 * u, Math.PI * 1.12, Math.PI * 1.88); c.stroke();
-  c.strokeStyle = pal.phones; c.lineWidth = .16 * u; c.stroke();
-  for (const s of [-1, 1]){ c.fillStyle = D_INK; rrc(c, s * .68 * u - .17 * u - o, -.2 * u - o, .34 * u + 2 * o, .5 * u + 2 * o, .14 * u); c.fill(); c.fillStyle = pal.phones; rrc(c, s * .68 * u - .17 * u, -.2 * u, .34 * u, .5 * u, .14 * u); c.fill(); }
-  c.restore();
-  // arms: puffy sleeve to the elbow, then forearm and hand
-  for (const [sx, t, side] of [[-.86, hl, -1], [.86, hr, 1]]){
-    const sh = B(sx, -2.45), r = ik(sh[0], sh[1], sh[0] + t[0] * u, sh[1] + t[1] * u, 1.25 * u, 1.15 * u, side, hip[0]);
-    capsule(c, sh, r.j, .58 * u, pal.jacket, o); capsule(c, r.j, r.e, .34 * u, pal.skin, o);
-    circ(c, r.j[0], r.j[1], .3 * u, pal.jacket, o); circ(c, r.e[0], r.e[1], .24 * u, pal.skin, o);
-  }
-}
-function rrc(c, x, y, w, h, r){ c.beginPath(); if (c.roundRect) c.roundRect(x, y, w, h, Math.max(0, Math.min(r, w / 2, h / 2))); else c.rect(x, y, w, h); }
-function danceState(t){
-  const now = performance.now(), p = (t - game.beatOff) / game.beat;
-  const E = .4 + .6 * Math.min(1, game.you.combo / 24);
-  const miss = game.lastMiss ? Math.max(0, 1 - (now - game.lastMiss) / 520) : 0;
-  const lit = game.lastHit ? Math.max(0, 1 - (now - game.lastHit) / 160) : 0;
-  return { p, E, miss: miss * miss, lit };
-}
-const dc = $("dc"), dctx = dc.getContext("2d");
-function sizeDancers(){
-  const dpr = Math.min(window.devicePixelRatio || 1, 2), r = dc.getBoundingClientRect();
-  dc.width = Math.max(1, Math.round(r.width * dpr)); dc.height = Math.max(1, Math.round(r.height * dpr));
-}
-function drawDancers(t){
-  if (!dc.width || dc.width < 2) sizeDancers();
-  const W = dc.width, H = dc.height, gr = dc.getBoundingClientRect(), sr = cv.getBoundingClientRect(), k = W / (gr.width || W);
-  dctx.clearRect(0, 0, W, H);
-  const side = (sr.left - gr.left) * k;
-  game.dancerInLane = side < 170 * k;
-  if (game.dancerInLane) return;
-  const s = danceState(t), h = Math.min(H * .6, side * 1.5, 540 * k), floor = (sr.bottom - gr.top) * k - 6 * k;
-  drawDancer(dctx, side / 2, floor, h, DANCE_PAL[0], s.p, s.E, s.miss, s.lit, false);
-  drawDancer(dctx, W - side / 2, floor, h, DANCE_PAL[1], s.p, s.E, s.miss, s.lit, true);
-}
 function draw(t){
   const W = cv.width, H = cv.height, dpr = W / (cv.getBoundingClientRect().width || W);
   const NL = game.nl, CL = game.cols, GL = game.L.glyph, lw = W / NL, padH = Math.min(lw * .75, H * .17), hitY = H - padH - 14 * dpr, speed = hitY / game.lead;
@@ -1540,10 +1402,6 @@ function draw(t){
   for (let i = 0; i < NL; i++){
     g2.fillStyle = i % 2 ? "rgba(77,139,255,.07)" : "rgba(255,255,255,.025)"; g2.fillRect(i * lw, 0, lw, H); if (i) { g2.fillStyle = "rgba(170,195,255,.2)"; g2.fillRect(i * lw, 0, dpr, H); }
     if (game.held[i] || nowMs - game.flash[i] < 90){ const gr = g2.createLinearGradient(0, hitY, 0, hitY - H * .45); gr.addColorStop(0, CL[i] + "55"); gr.addColorStop(1, CL[i] + "00"); g2.fillStyle = gr; g2.fillRect(i * lw, hitY - H * .45, lw, H * .45); }
-  }
-  if (game.dancerInLane){
-    const s = danceState(t); g2.save(); g2.globalAlpha = .16;
-    drawDancer(g2, W / 2, hitY - 6 * dpr, Math.min(H * .6, W * 1.1), DANCE_PAL[0], s.p, s.E, s.miss, s.lit, false); g2.restore();
   }
   for (let b = Math.ceil((t - game.beatOff) / game.beat); game.beatOff + b * game.beat < t + game.lead; b++){
     const y = hitY - (game.beatOff + b * game.beat - t) * speed; if (y < 0) break;
@@ -1816,7 +1674,6 @@ function drawRec(t){
   const bg = c.createLinearGradient(0, y0, 0, H); bg.addColorStop(0, "#0c0d3c"); bg.addColorStop(1, "#1a1060"); c.fillStyle = bg; c.fillRect(0, y0, W, bh);
   c.fillStyle = "rgba(5,6,26,.55)"; for (let x = 0; x < W; x += 24) c.fillRect(x, y0, 3, bh); for (let y = y0; y < H; y += 24) c.fillRect(0, y, W, 3);
   const glow = c.createRadialGradient(W * .7, y0 + 120, 0, W * .7, y0 + 120, 380); glow.addColorStop(0, "rgba(255,255,255,.22)"); glow.addColorStop(1, "rgba(255,255,255,0)"); c.fillStyle = glow; c.fillRect(0, y0, W, bh);
-  { const s = danceState(t); drawDancer(c, 200, H - 56, 240, DANCE_PAL[0], s.p, s.E, s.miss, s.lit, false); drawDancer(c, W - 200, H - 56, 240, DANCE_PAL[1], s.p, s.E, s.miss, s.lit, true); c.lineWidth = 1; }
   const p = game.you;
   c.textAlign = "center"; c.fillStyle = COL.muted; c.font = '22px "Share Tech Mono", monospace'; c.fillText(profile.tag, W / 2, y0 + 150);
   c.fillStyle = "#fff"; c.shadowColor = "rgba(120,170,255,.9)"; c.shadowBlur = 24; c.font = '900 112px Unbounded, "Arial Black", sans-serif'; c.fillText(p.score.toLocaleString(), W / 2, y0 + 250); c.shadowBlur = 0;
