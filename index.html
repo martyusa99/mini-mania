@@ -103,6 +103,13 @@ kbd{font-family:var(--mono);font-size:12px;background:rgba(0,0,0,.4);border:1px 
   transition:transform .5s cubic-bezier(.2,.8,.2,1), opacity .35s, filter .35s;box-shadow:0 18px 40px rgba(0,0,0,.55);
   -webkit-box-reflect:below 4px linear-gradient(transparent 72%, rgba(255,255,255,.14))}
 .cover img{width:100%;height:100%;display:block;border-radius:inherit;pointer-events:none}
+.cover .hear{position:absolute;right:10px;bottom:10px;display:flex;align-items:flex-end;gap:3px;height:22px;padding:5px 7px;border-radius:999px;background:rgba(255,255,255,.82);box-shadow:0 2px 10px rgba(8,40,120,.35);opacity:0;transform:scale(.8);transition:opacity .2s,transform .2s;pointer-events:none}
+.cover .hear i{width:3px;border-radius:2px;background:#2a4fd6;height:30%}
+.cover.hearing .hear{opacity:1;transform:none}
+.cover.hearing .hear i{animation:hearBar .5s ease-in-out infinite alternate}
+.cover.hearing .hear i:nth-child(2){animation-delay:-.2s}.cover.hearing .hear i:nth-child(3){animation-delay:-.35s}.cover.hearing .hear i:nth-child(4){animation-delay:-.1s}
+@keyframes hearBar{from{height:25%}to{height:100%}}
+@media (prefers-reduced-motion:reduce){.cover.hearing .hear i{animation:none;height:70%}}
 .cover[aria-selected="true"]{box-shadow:0 0 0 1px rgba(255,255,255,.6),0 22px 60px rgba(120,170,255,.4)}
 .deck-nav{position:absolute;top:calc(18px + var(--cs) / 2);transform:translateY(-50%);z-index:200;width:42px;height:42px;border-radius:50%;border:1px solid var(--line2);background:rgba(8,6,15,.7);font-size:24px;line-height:1;color:var(--text);display:grid;place-items:center;padding:0 0 3px}
 .deck-nav:hover{border-color:var(--p2)}
@@ -1100,8 +1107,31 @@ async function playback(rec, gid, btn, fromBar = INTRO_BARS, toBar = TOTAL_BARS)
   pb = { nodes:[bus, rb, db], btn, timer: setTimeout(stopPlayback, (dur + 1.5) * 1000) };
   if (btn) btn.textContent = "Stop";
 }
+let hv = null, hvWait = 0;
+const SNIP = 5;
+function stopSnippet(el){
+  clearTimeout(hvWait); if (!hv || (el && hv.el !== el)) return;
+  const h = hv; hv = null; h.el.classList.remove("hearing"); clearInterval(h.tick); clearTimeout(h.timer);
+  // a quick fade so it doesn't click off
+  let v = h.a.volume; const f = setInterval(() => { v -= .15; if (v <= 0){ clearInterval(f); try { h.a.pause(); h.a.removeAttribute("src"); h.a.load(); } catch(e){} } else h.a.volume = v; }, 25);
+}
+function hoverSnippet(el, g, delay){
+  clearTimeout(hvWait);
+  if (pv || pb || !$("lobby") || $("lobby").hidden) return;          // the Preview button or a replay already has the speakers
+  if (hv && hv.el === el) return;
+  hvWait = setTimeout(() => {
+    stopSnippet();
+    try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch(e){}
+    const a = new Audio(g.preview); a.preload = "auto"; a.volume = 0;
+    const h = hv = { a, el }; el.classList.add("hearing");
+    a.addEventListener("playing", () => { if (hv !== h) return; let v = 0; h.tick = setInterval(() => { v = Math.min(.85, v + .085); a.volume = v; if (v >= .85) clearInterval(h.tick); }, 30);
+      h.timer = setTimeout(() => stopSnippet(el), SNIP * 1000); });
+    a.addEventListener("ended", () => stopSnippet(el));
+    a.play().catch(() => { if (hv === h){ hv = null; el.classList.remove("hearing"); } });
+  }, delay);
+}
 let pv = null;
-function stopPreview(){ if (!pv) return; const p = pv; pv = null; try { p.a.pause(); p.a.removeAttribute("src"); p.a.load(); } catch(e){} if (p.btn) p.btn.textContent = p.btn.dataset.label; }
+function stopPreview(){ stopSnippet(); if (!pv) return; const p = pv; pv = null; try { p.a.pause(); p.a.removeAttribute("src"); p.a.load(); } catch(e){} if (p.btn) p.btn.textContent = p.btn.dataset.label; }
 function playPreview(btn, g){
   if (pv && pv.btn === btn){ stopPreview(); return; }
   stopPlayback(); stopPreview();
@@ -1413,7 +1443,12 @@ function renderCrates(){
     const g = GENRES[id], b = document.createElement("button");
     b.type = "button"; b.className = "cover"; b.id = "genre-" + id; b.setAttribute("role", "option"); b.setAttribute("aria-label", `${g.name}, ${g.style}, ${g.bpm} BPM`);
     const img = document.createElement("img"); img.alt = ""; img.src = coverArt(g); b.appendChild(img);
-    b.addEventListener("click", () => { if (deck.dragged) return; selectGenre(id); });
+    const hear = document.createElement("span"); hear.className = "hear"; hear.innerHTML = "<i></i><i></i><i></i><i></i>"; b.appendChild(hear);
+    b.addEventListener("click", () => { if (deck.dragged || profile.genre === id) return; selectGenre(id); if (g.preview && b.matches(":hover") && matchMedia("(hover:hover)").matches) hoverSnippet(b, g, 120); });
+    // a 5-second taste of the song: hover with a mouse, or tap the front cover on a phone
+    b.addEventListener("pointerenter", e => { if (e.pointerType === "mouse" && g.preview) hoverSnippet(b, g, 220); });
+    b.addEventListener("pointerleave", e => { if (e.pointerType === "mouse") stopSnippet(b); });
+    b.addEventListener("pointerup", e => { if (e.pointerType !== "mouse" && !deck.dragged && g.preview && profile.genre === id) hoverSnippet(b, g, 0); });
     ring.appendChild(b);
   });
   layoutDeck(); renderCrateDetail();
