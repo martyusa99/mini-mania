@@ -1826,6 +1826,7 @@ function startRec(){
       REC.url = URL.createObjectURL(REC.blob);
     }
     REC.chunks = []; REC.pending = false; renderClip();
+    if (REC.blob && REC.len === "short" && (REC.dur || 0) > SHORT_LEN + 1) makeShort();
   };
   rec.start(250); REC.recorder = rec; renderRecUi();
 }
@@ -1838,7 +1839,7 @@ function stopRec(keep){
 function clearClip(){
   if (REC.url) URL.revokeObjectURL(REC.url); REC.url = null; REC.blob = null;
   if (REC.split) URL.revokeObjectURL(REC.split.url); REC.split = null;
-  if (REC.short) URL.revokeObjectURL(REC.short.url); REC.short = null; REC.len = "full"; REC.igStep = 0;
+  if (REC.short) URL.revokeObjectURL(REC.short.url); REC.short = null; REC.len = "short"; REC.igStep = 0;
   if (FACE.url) URL.revokeObjectURL(FACE.url); FACE.file = null; FACE.url = null; FACE.offset = 0; FACE.busy = false;
   const v = $("clipVideo"); v.removeAttribute("src"); v.load();
 }
@@ -1858,7 +1859,8 @@ function renderClip(){
   if (v.getAttribute("src") !== shown.url){ v.src = shown.url; }
   v.hidden = false;
   lenRow.hidden = (REC.dur || 0) <= SHORT_LEN + 1;
-  $("lenFull").setAttribute("aria-checked", String(REC.len !== "short")); $("lenShort").setAttribute("aria-checked", String(REC.len === "short"));
+  const wantShort = REC.len === "short" && (REC.dur || 0) > SHORT_LEN + 1;
+  $("lenFull").setAttribute("aria-checked", String(!wantShort)); $("lenShort").setAttribute("aria-checked", String(wantShort));
   const share = canShareFiles(), canSave = !!downloadsNS || !inClaude;
   const igOpen = $("clipIGOpen"); igOpen.href = IG_STORY_URL;
   save.hidden = !canSave; ig.hidden = inClaude || (IS_MOBILE && REC.igStep === 1); igOpen.hidden = inClaude || !(IS_MOBILE && REC.igStep === 1);
@@ -1883,7 +1885,7 @@ async function saveClip(){
 }
 /* ---------- clip length, camera roll and Instagram Story sharing ---------- */
 const SHORT_LEN = 15;
-REC.len = "full"; REC.short = null; REC.shortBusy = false;
+REC.len = "short"; REC.short = null; REC.shortBusy = false;   // the 15-second cut is the default
 const fullClip = () => REC.split || REC;
 const shownClip = () => (REC.len === "short" && REC.short) ? REC.short : fullClip();
 const clipName = (c) => { const d = new Date(), stamp = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2,"0")}${String(d.getDate()).padStart(2,"0")}-${String(d.getHours()).padStart(2,"0")}${String(d.getMinutes()).padStart(2,"0")}`;
@@ -1930,7 +1932,7 @@ async function makeShort(){
     const blob = new Blob(chunks, { type: rec.mimeType || (ext === "mp4" ? "video/mp4" : "video/webm") });
     if (REC.short) URL.revokeObjectURL(REC.short.url);
     REC.short = { blob, url: URL.createObjectURL(blob), ext, start };
-  } catch(e){ clearInterval(timer); try { v.pause(); } catch(_){} REC.len = "full"; $("clipHint").textContent = "Couldn't make the 15-second version. The full clip is still here."; }
+  } catch(e){ clearInterval(timer); try { v.pause(); } catch(_){} REC.len = "full"; REC.shortBusy = false; wrap.hidden = true; renderClip(); $("clipHint").textContent = "Couldn't make the 15-second version. Here's the full clip."; return; }
   REC.shortBusy = false; wrap.hidden = true; renderClip();
 }
 function setClipLen(len){
