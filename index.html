@@ -315,6 +315,7 @@ kbd{font-family:var(--mono);font-size:12px;background:rgba(0,0,0,.4);border:1px 
 .clip video{width:100%;max-width:100%;aspect-ratio:9/16;border-radius:12px;background:#000;display:block}
 .clip .side-info{display:grid;gap:12px;align-content:start;min-width:0}
 .cards{display:grid;gap:8px}
+.btn.wait{opacity:.55}
 .card-thumbs{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap}
 .card-thumb{display:grid;gap:6px;justify-items:center;padding:6px;border:1px solid rgba(120,160,255,.35);border-radius:12px;background:rgba(255,255,255,.55);cursor:pointer;font:600 11px/1 var(--mono);letter-spacing:.08em;color:#1b2f74;transition:transform .15s,box-shadow .15s}
 .card-thumb:hover,.card-thumb:focus-visible{transform:translateY(-2px);box-shadow:0 8px 20px -6px rgba(8,40,120,.45)}
@@ -2007,7 +2008,7 @@ function startRec(){
       REC.url = URL.createObjectURL(REC.blob);
     }
     REC.chunks = []; REC.pending = false; renderClip(); renderCards();
-    if (REC.blob && REC.len === "short" && (REC.dur || 0) > SHORT_LEN + 1) makeShort();
+    if (REC.blob && REC.len === "short" && (REC.dur || 0) > SHORT_LEN + 1){ if (IS_IOS){ REC.len = "full"; REC.shortTap = true; renderClip(); $("clipHint").textContent = "Your full clip is ready to save or share. Tap “15 sec” to cut your best 15 seconds (it takes 15 seconds)."; } else makeShort(false); }
   };
   rec.start(250); REC.recorder = rec; renderRecUi();
 }
@@ -2048,16 +2049,18 @@ function renderClip(){
   const share = canShareFiles(), canSave = !!downloadsNS || !inClaude;
   const igOpen = $("clipIGOpen"); igOpen.href = IG_STORY_URL;
   save.hidden = !canSave; ig.hidden = inClaude || (IS_MOBILE && REC.igStep === 1); igOpen.hidden = inClaude || !(IS_MOBILE && REC.igStep === 1);
-  save.disabled = ig.disabled = REC.shortBusy;
+  save.disabled = ig.disabled = false; save.classList.toggle("wait", !!REC.shortBusy); ig.classList.toggle("wait", !!REC.shortBusy);
   save.textContent = share ? "Save to camera roll" : (REC.styleUsed !== "gel" && (REC.split || REC.hadCam) ? "Save split-screen clip" : "Save clip");
   if (REC.shortBusy){ hint.textContent = "Making your 15-second clip from the best part of your run. It plays through once, so keep this tab open."; renderFace(); return; }
   const mb = (shown.blob.size / 1048576).toFixed(1), len = shown === REC.short ? "15-second" : "Full-run";
   const what = REC.styleUsed === "gel" ? `${len} Gel-style 720×1280 ${shown.ext.toUpperCase()} with game audio · ${mb} MB.` : REC.split || REC.hadCam ? `${len} split-screen 720×1280 ${shown.ext.toUpperCase()}: your run on top, you on the bottom · ${mb} MB.` : `${len} vertical 720×1280 ${shown.ext.toUpperCase()} with game audio · ${mb} MB.`;
-  hint.textContent = what + (!canSave ? " Saving files isn't available in this view." : share ? " Save it to your camera roll or send it straight to your Story." : " Save it to post or keep.");
+  hint.textContent = what + (!canSave ? " Saving files isn't available in this view." : share ? " Save it to your camera roll or send it straight to your Story." : " Save it to post or keep.")
+    + (REC.shortTap && !REC.short && lenRow.hidden === false ? " Tap “15 sec” to cut your best 15 seconds." : "");
   renderFace();
 }
 async function saveClip(){
-  if (!REC.blob || REC.shortBusy) return;
+  if (!REC.blob) return;
+  if (REC.shortBusy){ busyNote(); return; }
   if (canShareFiles()) return shareClip(false);
   const shown = shownClip(), hint = $("clipHint");
   if (!downloadsNS){ if (inClaude) return; downloadClip(shown); hint.textContent = "Clip downloaded."; return; }
@@ -2218,41 +2221,62 @@ function bestWindow(){
   for (let s = 0; s <= dur - SHORT_LEN - .3; s += .5){ const n = ts.filter(t => t - off >= s && t - off < s + SHORT_LEN).length; if (n > bestN){ bestN = n; best = s; } }
   return best;
 }
-async function makeShort(){
+// waits with a time limit, so a phone that never answers can't leave the clip stuck
+const within = (pr, ms, what) => Promise.race([pr, new Promise((_, rej) => setTimeout(() => rej(new Error("timeout:" + what)), ms))]);
+async function makeShort(fromTap){
   const src = fullClip(); if (!src || !src.url || REC.shortBusy) return;
-  REC.shortBusy = true; renderClip();
+  REC.shortBusy = true; REC.shortTap = false; renderClip();
   const wrap = $("shortProgWrap"), bar = $("shortProg"); wrap.hidden = false; bar.style.width = "0%";
   const start = bestWindow(), W = 720, H = 1280, cvs = document.createElement("canvas"); cvs.width = W; cvs.height = H; const c = cvs.getContext("2d");
-  const v = document.createElement("video"); v.src = src.url; v.playsInline = true; v.preload = "auto";
-  let timer, stream;
+  // iPhones only load and play a video that's on the page and started from a tap, so it sits off-screen and play() runs right away
+  const v = document.createElement("video"); v.src = src.url; v.playsInline = true; v.setAttribute("playsinline", ""); v.preload = "auto";
+  v.style.cssText = "position:fixed;left:-10px;top:0;width:2px;height:2px;opacity:0;pointer-events:none"; document.body.appendChild(v);
+  let unlock = null; if (fromTap){ try { if (ac && ac.state !== "running") ac.resume(); } catch(_){} unlock = v.play(); }
+  let timer, stream, rec;
+  const cleanup = () => { clearInterval(timer); try { v.pause(); } catch(_){} try { if (rec && rec.state !== "inactive") rec.stop(); } catch(_){} if (stream) stream.getTracks().forEach(tr => tr.stop()); v.removeAttribute("src"); v.load(); v.remove(); };
   try {
-    await initAudio(); await mediaReady(v);
+    if (unlock) await within(unlock, 4000, "play"); v.pause();
+    await within(initAudio(), 3000, "audio"); await within(mediaReady(v), 6000, "load");
     const dest = ac.createMediaStreamDestination(), gn = ac.createGain(); ac.createMediaElementSource(v).connect(gn); gn.connect(dest);
     stream = cvs.captureStream(30); dest.stream.getAudioTracks().forEach(tr => stream.addTrack(tr));
-    const [mime, ext] = pickMime(), rec = new MediaRecorder(stream, mime ? { mimeType: mime, videoBitsPerSecond: 4000000 } : undefined), chunks = [];
+    const [mime, ext] = pickMime(), chunks = []; rec = new MediaRecorder(stream, mime ? { mimeType: mime, videoBitsPerSecond: 4000000 } : undefined);
     rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
     const done = new Promise(res => { rec.onstop = res; });
-    v.currentTime = start; await new Promise(r => v.addEventListener("seeked", r, { once:true }));
+    if (Math.abs(v.currentTime - start) > .05){ const sk = new Promise(r => v.addEventListener("seeked", r, { once:true })); v.currentTime = start; await within(sk, 4000, "seek"); }
     gn.gain.setValueAtTime(0, ac.currentTime); gn.gain.linearRampToValueAtTime(1, ac.currentTime + .08);
-    rec.start(250); await v.play();
-    let fading = false;
-    const draw = () => {
-      c.drawImage(v, 0, 0, W, H); const el = v.currentTime - start;
-      bar.style.width = Math.min(100, el / SHORT_LEN * 100) + "%";
-      if (!fading && el >= SHORT_LEN - .6){ fading = true; gn.gain.setValueAtTime(1, ac.currentTime); gn.gain.linearRampToValueAtTime(0, ac.currentTime + .55); }
-      if (el >= SHORT_LEN || v.ended){ clearInterval(timer); v.pause(); if (rec.state !== "inactive") rec.stop(); }
-    };
-    timer = setInterval(draw, 1000 / 30); draw();
-    await done; stream.getTracks().forEach(tr => tr.stop());
+    rec.start(250); await within(v.play(), 4000, "play");
+    let fading = false, lastT = -1, stallAt = performance.now();
+    const failed = new Promise((_, rej) => {
+      const draw = () => {
+        c.drawImage(v, 0, 0, W, H); const el = v.currentTime - start;
+        // a playback that stops moving for 4 seconds gives up instead of hanging
+        if (v.currentTime !== lastT){ lastT = v.currentTime; stallAt = performance.now(); } else if (performance.now() - stallAt > 4000){ clearInterval(timer); rej(new Error("stalled")); return; }
+        bar.style.width = Math.min(100, el / SHORT_LEN * 100) + "%";
+        if (!fading && el >= SHORT_LEN - .6){ fading = true; gn.gain.setValueAtTime(1, ac.currentTime); gn.gain.linearRampToValueAtTime(0, ac.currentTime + .55); }
+        if (el >= SHORT_LEN || v.ended){ clearInterval(timer); v.pause(); if (rec.state !== "inactive") rec.stop(); }
+      };
+      timer = setInterval(draw, 1000 / 30); draw();
+    });
+    await Promise.race([done, failed]);
+    stream.getTracks().forEach(tr => tr.stop());
     const blob = new Blob(chunks, { type: rec.mimeType || (ext === "mp4" ? "video/mp4" : "video/webm") });
+    if (!blob.size) throw new Error("empty");
     if (REC.short) URL.revokeObjectURL(REC.short.url);
     REC.short = { blob, url: URL.createObjectURL(blob), ext, start };
-  } catch(e){ clearInterval(timer); try { v.pause(); } catch(_){} REC.len = "full"; REC.shortBusy = false; wrap.hidden = true; renderClip(); $("clipHint").textContent = "Couldn't make the 15-second version. Here's the full clip."; return; }
+    v.remove();
+  } catch(e){
+    cleanup(); REC.len = "full"; REC.shortBusy = false; wrap.hidden = true;
+    // no tap yet (iPhone): offer it as a tap instead of an error
+    REC.shortTap = !fromTap; renderClip();
+    $("clipHint").textContent = REC.shortTap ? "Your full clip is ready to save or share. Tap “15 sec” to cut your best 15 seconds (it takes 15 seconds)." : "Couldn't make the 15-second version on this phone. The full clip is ready to save or share.";
+    return;
+  }
   REC.shortBusy = false; wrap.hidden = true; renderClip();
 }
+function busyNote(){ const pct = parseInt($("shortProg").style.width) || 0; $("clipHint").textContent = `Your 15-second clip is still being made (${pct}%). Tap again when it's done, or switch to Full run to post right now.`; }
 function setClipLen(len){
   REC.len = len; REC.igStep = 0;
-  if (len === "short" && !REC.short && !REC.shortBusy) makeShort();
+  if (len === "short" && !REC.short && !REC.shortBusy) makeShort(true);
   renderClip();
 }
 function downloadClip(c){
@@ -2882,7 +2906,7 @@ $("recBtn").addEventListener("click", () => { if (REC.recorder) stopRec(true); e
 $("clipSave").addEventListener("click", saveClip);
 $("cardStory").addEventListener("click", () => saveCard("story"));
 $("cardPost").addEventListener("click", () => saveCard("post"));
-$("clipIG").addEventListener("click", () => { if (!REC.shortBusy) shareClip(true); });
+$("clipIG").addEventListener("click", () => { if (REC.shortBusy) return busyNote(); shareClip(true); });
 $("clipIGOpen").addEventListener("click", () => { setTimeout(() => { REC.igStep = 0; renderClip(); $("clipHint").textContent = "No Instagram? Install it, or post the saved clip from your camera roll."; }, 2500); });
 $("lenFull").addEventListener("click", () => setClipLen("full"));
 $("styleGel").addEventListener("click", () => { REC.style = "gel"; store.set("clipStyle", "gel"); renderRecUi(); });
