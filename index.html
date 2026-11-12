@@ -285,6 +285,7 @@ kbd{font-family:var(--mono);font-size:12px;background:rgba(0,0,0,.4);border:1px 
 .clip video{width:100%;max-width:100%;aspect-ratio:9/16;border-radius:12px;background:#000;display:block}
 .clip .side-info{display:grid;gap:12px;align-content:start;min-width:0}
 .clip-len{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+a.btn.ig-btn{text-decoration:none;display:inline-block}
 .ig-btn::before{content:"";display:inline-block;width:14px;height:14px;margin-right:8px;vertical-align:-2px;border-radius:4px;border:2px solid currentColor;box-sizing:border-box;background:radial-gradient(circle,transparent 0 2.5px,currentColor 2.6px 3.8px,transparent 3.9px)}
 .face{display:grid;gap:10px;padding-top:14px;border-top:1px solid var(--line)}
 .sync{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-family:var(--mono);font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
@@ -586,7 +587,7 @@ kbd{background:var(--pearl);color:var(--text);border:1px solid rgba(140,120,110,
           <div class="hint" id="clipHint">Finishing your clip…</div>
           <div class="clip-len" id="clipLenRow" hidden><span class="label">Length</span><div class="seg" role="radiogroup" aria-label="Clip length"><button type="button" role="radio" id="lenFull" aria-checked="true">Full run</button><button type="button" role="radio" id="lenShort" aria-checked="false">15 sec</button></div></div>
           <div class="fprog" id="shortProgWrap" hidden><i id="shortProg"></i></div>
-          <div class="actions"><button class="btn primary" id="clipSave" hidden>Save clip</button><button class="btn ig-btn" id="clipIG" type="button" hidden>Share to IG Story</button></div>
+          <div class="actions"><button class="btn primary" id="clipSave" hidden>Save clip</button><button class="btn ig-btn" id="clipIG" type="button" hidden>Share to IG Story</button><a class="btn primary ig-btn" id="clipIGOpen" hidden>Open Instagram Story</a></div>
           <div class="face" id="facePanel" hidden>
             <span class="label">Split-screen with you</span>
             <p class="hint" id="faceHint">Film yourself playing on your phone with the sound on, then add that video. The game lines it up with your run by listening for the song.</p>
@@ -1801,7 +1802,7 @@ function stopRec(keep){
 function clearClip(){
   if (REC.url) URL.revokeObjectURL(REC.url); REC.url = null; REC.blob = null;
   if (REC.split) URL.revokeObjectURL(REC.split.url); REC.split = null;
-  if (REC.short) URL.revokeObjectURL(REC.short.url); REC.short = null; REC.len = "full";
+  if (REC.short) URL.revokeObjectURL(REC.short.url); REC.short = null; REC.len = "full"; REC.igStep = 0;
   if (FACE.url) URL.revokeObjectURL(FACE.url); FACE.file = null; FACE.url = null; FACE.offset = 0; FACE.busy = false;
   const v = $("clipVideo"); v.removeAttribute("src"); v.load();
 }
@@ -1823,7 +1824,8 @@ function renderClip(){
   lenRow.hidden = (REC.dur || 0) <= SHORT_LEN + 1;
   $("lenFull").setAttribute("aria-checked", String(REC.len !== "short")); $("lenShort").setAttribute("aria-checked", String(REC.len === "short"));
   const share = canShareFiles(), canSave = !!downloadsNS || !inClaude;
-  save.hidden = !canSave; ig.hidden = inClaude;
+  const igOpen = $("clipIGOpen"); igOpen.href = IG_STORY_URL;
+  save.hidden = !canSave; ig.hidden = inClaude || (IS_MOBILE && REC.igStep === 1); igOpen.hidden = inClaude || !(IS_MOBILE && REC.igStep === 1);
   save.disabled = ig.disabled = REC.shortBusy;
   save.textContent = share ? "Save to camera roll" : (REC.split || REC.hadCam ? "Save split-screen clip" : "Save clip");
   if (REC.shortBusy){ hint.textContent = "Making your 15-second clip from the best part of your run. It plays through once, so keep this tab open."; renderFace(); return; }
@@ -1896,7 +1898,7 @@ async function makeShort(){
   REC.shortBusy = false; wrap.hidden = true; renderClip();
 }
 function setClipLen(len){
-  REC.len = len;
+  REC.len = len; REC.igStep = 0;
   if (len === "short" && !REC.short && !REC.shortBusy) makeShort();
   renderClip();
 }
@@ -1904,7 +1906,23 @@ function downloadClip(c){
   const a = document.createElement("a"); a.href = URL.createObjectURL(c.blob); a.download = clipName(c);
   document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000);
 }
+const IS_IOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+const IS_ANDROID = /Android/.test(navigator.userAgent), IS_MOBILE = IS_IOS || IS_ANDROID;
+const IG_STORY_URL = IS_ANDROID ? "intent://story-camera#Intent;scheme=instagram;package=com.instagram.android;S.browser_fallback_url=https%3A%2F%2Fwww.instagram.com%2F;end" : "instagram://story-camera";
+REC.igStep = 0;
+async function storyFlow(){
+  const c = shownClip(), hint = $("clipHint"); if (!c || !c.blob) return;
+  const f = clipFile(c);
+  if (f && canShareFiles() && navigator.canShare({ files: [f] })){
+    hint.textContent = "Step 1: tap “Save Video” so the clip lands in your camera roll.";
+    try { await navigator.share({ files: [f] }); }
+    catch(e){ if (e && e.name === "AbortError"){ hint.textContent = "Share canceled. Your clip is still here."; return; } downloadClip(c); }
+  } else downloadClip(c);
+  REC.igStep = 1; renderClip();
+  hint.textContent = "Step 2: tap “Open Instagram Story”. Your clip is the newest video in the Story gallery (bottom left).";
+}
 async function shareClip(toStory){
+  if (toStory && IS_MOBILE) return storyFlow();
   const c = shownClip(), hint = $("clipHint"); if (!c || !c.blob) return;
   const f = clipFile(c);
   if (f && canShareFiles() && navigator.canShare({ files: [f] })){
@@ -2224,6 +2242,7 @@ $("recToggle").addEventListener("click", () => { REC.armed = !REC.armed; store.s
 $("recBtn").addEventListener("click", () => { if (REC.recorder) stopRec(true); else startRec(); });
 $("clipSave").addEventListener("click", saveClip);
 $("clipIG").addEventListener("click", () => { if (!REC.shortBusy) shareClip(true); });
+$("clipIGOpen").addEventListener("click", () => { setTimeout(() => { REC.igStep = 0; renderClip(); $("clipHint").textContent = "No Instagram? Install it, or post the saved clip from your camera roll."; }, 2500); });
 $("lenFull").addEventListener("click", () => setClipLen("full"));
 $("lenShort").addEventListener("click", () => setClipLen("short"));
 $("faceFile").addEventListener("change", e => { addFace(e.target.files && e.target.files[0]); e.target.value = ""; });
