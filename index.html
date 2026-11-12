@@ -2053,6 +2053,45 @@ function gelBlob(c, cx, cy, r, hue, t, beat){
   c.fillStyle = "rgba(255,255,255,.9)"; c.beginPath(); c.ellipse(-r * .38, -r * .45, r * .16, r * .09, -.6, 0, Math.PI * 2); c.fill();
   c.restore();
 }
+// a merging gel cluster: a core that buds droplets on every bar and pulls them back in, pulsing on each beat
+const META = { cv: null, img: null, n: 0 };
+function metaCluster(c, cx, cy, R, beatP, seed, warm){
+  const N = LOWFX ? 72 : 120;
+  if (!META.cv || META.n !== N){ META.cv = document.createElement("canvas"); META.cv.width = META.cv.height = N; META.img = META.cv.getContext("2d").createImageData(N, N); META.n = N; }
+  const barF = (((beatP / 4) % 1) + 1) % 1, beatF = ((beatP % 1) + 1) % 1;
+  const bloom = Math.pow(Math.sin(Math.PI * Math.min(1, barF * 1.15)), 1.6), pulse = Math.pow(1 - beatF, 3);
+  const rot = beatP * .18 + seed, balls = [[0, 0, .34 + .05 * pulse]];
+  for (let i = 0; i < 7; i++){
+    const a = rot + i * 2.39996 + Math.sin(beatP * .7 + i) * .25;
+    const d = (.12 + bloom * (.32 + .16 * Math.sin(i * 1.7 + seed))) * (1 + .08 * pulse);
+    balls.push([Math.cos(a) * d, Math.sin(a) * d, (.07 + .1 * ((i * 37 % 10) / 10)) * (.55 + .6 * bloom) + .02 * pulse]);
+  }
+  const data = META.img.data, inv = 2 / N;
+  const core = warm ? [255, 190, 236] : [214, 200, 255], rim = warm ? [150, 172, 255] : [128, 214, 255];
+  for (let py = 0; py < N; py++){
+    const y = py * inv - 1;
+    for (let px = 0; px < N; px++){
+      const x = px * inv - 1; let f = 0, gx = 0, gy = 0;
+      for (let k = 0; k < balls.length; k++){
+        const b = balls[k], dx = x - b[0], dy = y - b[1], d2 = dx * dx + dy * dy + 1e-4, r2 = b[2] * b[2], q = r2 / d2;
+        f += q; const w = q / d2; gx -= 2 * w * dx; gy -= 2 * w * dy;
+      }
+      const o = (py * N + px) * 4;
+      if (f < .92){ data[o + 3] = 0; continue; }
+      const e = Math.min(1, (f - 1) / 2.2);
+      let nx = -gx * .09, ny = -gy * .09; const nl = Math.hypot(nx, ny, 1); nx /= nl; ny /= nl; const nz = 1 / nl;
+      const spec = Math.pow(Math.max(0, nx * -.42 + ny * -.5 + nz * .76), 26);
+      const fres = Math.pow(1 - nz, 2);
+      for (let ch = 0; ch < 3; ch++){
+        const base = rim[ch] + (core[ch] - rim[ch]) * e;
+        data[o + ch] = Math.min(255, base + 255 * (spec * .95 + fres * .25));
+      }
+      data[o + 3] = Math.round(255 * Math.min(1, (f - .92) / .14) * (.82 + .18 * fres));
+    }
+  }
+  META.cv.getContext("2d").putImageData(META.img, 0, 0);
+  c.save(); c.imageSmoothingQuality = "high"; c.globalAlpha = .9; c.drawImage(META.cv, cx - R, cy - R, R * 2, R * 2); c.restore();
+}
 function drawRecGel(t){
   const c = REC.ctx, W = 720, H = 1280, g = game.g, p = game.you, now = performance.now() / 1000;
   const beatP = (t - game.beatOff) / game.beat, f = ((beatP % 1) + 1) % 1, beat = Math.pow(.5 + .5 * Math.cos(Math.PI * 2 * f), 4);
@@ -2090,8 +2129,11 @@ function drawRecGel(t){
     c.restore();
   }
   // floating blobjects, swelling on the beat
-  [[110, 300, 70, 190, 0], [610, 520, 54, 280, 1.7], [140, 860, 46, 90, 3.1], [640, 330, 30, 320, 4.4], [380, 980, 26, 160, 5.2]].forEach(([x, y, r, hue, ph]) =>
-    gelBlob(c, x + Math.sin(now * .5 + ph) * 26, y + Math.cos(now * .4 + ph) * 22, r, hue, now + ph, beat));
+  // two merging gel clusters bloom together on every bar; the small beads swell on the same beat
+  metaCluster(c, 150 + Math.sin(beatP * Math.PI / 8) * 18, 340, 150, beatP, 0, true);
+  metaCluster(c, 590 - Math.sin(beatP * Math.PI / 8) * 18, 640, 120, beatP, 2.1, false);
+  [[640, 330, 30, 320, 4.4], [140, 880, 34, 90, 3.1], [380, 980, 22, 160, 5.2]].forEach(([x, y, r, hue, ph]) =>
+    gelBlob(c, x + Math.sin(beatP * Math.PI / 4 + ph) * 16, y + Math.cos(beatP * Math.PI / 4 + ph) * 12, r, hue, now + ph, beat));
   // light sweep across the whole frame every two bars, and a breath of white on each beat
   { const k = ((beatP / 8) % 1 + 1) % 1, pos = -400 + k * (W + 900);
     c.save(); c.globalCompositeOperation = "screen"; c.translate(pos, 0); c.transform(1, 0, -.45, 1, 0, 0);
