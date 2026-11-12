@@ -8,20 +8,20 @@
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="manifest" href="/site.webmanifest">
-<link rel="canonical" href="https://mini-mania-eosin.vercel.app/">
+<link rel="canonical" href="https://minimania.party/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="MINI MANIA">
 <meta property="og:title" content="MINI MANIA · keyboard beat battles">
 <meta property="og:description" content="Keyboard beat battles. Hit the notes, keep every part of the song playing, and post your run as a Gel clip or score card.">
-<meta property="og:url" content="https://mini-mania-eosin.vercel.app/">
-<meta property="og:image" content="https://mini-mania-eosin.vercel.app/og.jpg">
+<meta property="og:url" content="https://minimania.party/">
+<meta property="og:image" content="https://minimania.party/og.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="The MINI MANIA chrome logo over a blue Y2K sky, with a fan of track covers">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="MINI MANIA · keyboard beat battles">
 <meta name="twitter:description" content="Keyboard beat battles. Hit the notes, keep every part of the song playing, and post your run as a Gel clip or score card.">
-<meta name="twitter:image" content="https://mini-mania-eosin.vercel.app/og.jpg">
+<meta name="twitter:image" content="https://minimania.party/og.jpg">
 <style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)} body{margin:0;font-size:14px} img{max-width:100%} [hidden]{display:none!important}</style>
 </head>
 <body>
@@ -689,6 +689,37 @@ kbd{background:var(--pearl);color:var(--text);border:1px solid rgba(140,120,110,
 
 <script>
 (() => {
+/* ---------- moving to minimania.party: carry each player's tag, keys and stats across ----------
+   On the old vercel.app address, once the new domain answers, players are sent there with their saved data in the
+   link's #fragment (never sent to any server). The new address merges it in without overwriting anything it has. */
+const HOME = "minimania.party";
+try {
+  const m = /^#move=([A-Za-z0-9_-]+)$/.exec(location.hash);
+  if (m && location.hostname.endsWith(HOME)){
+    const json = decodeURIComponent(escape(atob(m[1].replace(/-/g, "+").replace(/_/g, "/"))));
+    const data = JSON.parse(json);
+    Object.entries(data).forEach(([k, v]) => {
+      if (!k.startsWith("chopbattle:") || typeof v !== "string") return;
+      if (k === "chopbattle:tagkeys"){
+        let have = {}; try { have = JSON.parse(localStorage.getItem(k) || "{}") || {}; } catch(e){}
+        let got = {}; try { got = JSON.parse(v) || {}; } catch(e){}
+        localStorage.setItem(k, JSON.stringify(Object.assign({}, got, have)));
+      } else if (localStorage.getItem(k) === null) localStorage.setItem(k, v);
+    });
+  }
+  if (m) history.replaceState(null, "", location.pathname + location.search);
+} catch(e){}
+try {
+  if (location.hostname.endsWith(".vercel.app") && window.self === window.top){
+    const ctl = new AbortController(); setTimeout(() => ctl.abort(), 2500);
+    fetch(`https://${HOME}/favicon-32.png?ping=${Date.now()}`, { mode: "no-cors", cache: "no-store", signal: ctl.signal }).then(() => {
+      if (document.getElementById("game") && !document.getElementById("game").hidden) return;   // never yank someone out mid-run
+      const out = {}; for (let i = 0; i < localStorage.length; i++){ const k = localStorage.key(i); if (k && k.startsWith("chopbattle:")) out[k] = localStorage.getItem(k); }
+      const enc = Object.keys(out).length ? "#move=" + btoa(unescape(encodeURIComponent(JSON.stringify(out)))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "") : "";
+      location.replace(`https://${HOME}/${location.search}${enc}`);
+    }).catch(() => {});
+  }
+} catch(e){}
 /* ---------- glo crate ----------
    Lanes: 0 = 808 (kick + distorted 808), 1 = snare/clap, 2 = hats, 3 = lead.
    play: per-lane step patterns on a 16-step half-time bar, [A, B].
