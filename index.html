@@ -285,6 +285,10 @@ kbd{font-family:var(--mono);font-size:12px;background:rgba(0,0,0,.4);border:1px 
 .clip video{width:100%;max-width:100%;aspect-ratio:9/16;border-radius:12px;background:#000;display:block}
 .clip .side-info{display:grid;gap:12px;align-content:start;min-width:0}
 .clip-len{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+/* clip style choices carry a tiny frame of what each clip looks like */
+#styleRow .seg button{display:inline-flex;align-items:center;gap:8px;padding:4px 14px 4px 4px}
+.st-thumb{width:27px;height:48px;border-radius:7px;object-fit:cover;display:block;box-shadow:0 0 0 1px rgba(255,255,255,.9),0 2px 6px rgba(20,40,110,.3)}
+#styleRow .seg button[aria-checked="false"] .st-thumb{opacity:.75}
 a.btn.ig-btn{text-decoration:none;display:inline-block}
 .ig-btn::before{content:"";display:inline-block;width:14px;height:14px;margin-right:8px;vertical-align:-2px;border-radius:4px;border:2px solid currentColor;box-sizing:border-box;background:radial-gradient(circle,transparent 0 2.5px,currentColor 2.6px 3.8px,transparent 3.9px)}
 .face{display:grid;gap:10px;padding-top:14px;border-top:1px solid var(--line)}
@@ -522,8 +526,12 @@ kbd{background:var(--pearl);color:var(--text);border:1px solid rgba(140,120,110,
           <div class="seg" role="radiogroup" aria-label="Difficulty"><button type="button" role="radio" id="diffEasy" aria-checked="true">Easy</button><button type="button" role="radio" id="diffNormal" aria-checked="false">Normal</button><button type="button" role="radio" id="diffHard" aria-checked="false">Hard</button></div>
         </div>
         <div class="opt" id="recRow">
-          <div class="opt-text"><span class="opt-name">Record run</span><span class="opt-desc">Saves a vertical clip to post. Pick Gel or Classic style after the run</span></div>
+          <div class="opt-text"><span class="opt-name">Record run</span><span class="opt-desc">Saves a vertical clip of your run to post</span></div>
           <div class="opt-ctl"><span class="state" id="recState">OFF</span><button class="switch rec" id="recToggle" type="button" role="switch" aria-checked="false" aria-label="Record run"><span class="knob"></span></button></div>
+        </div>
+        <div class="opt" id="styleRow">
+          <div class="opt-text"><span class="opt-name">Clip style</span><span class="opt-desc" id="styleDesc"></span></div>
+          <div class="opt-ctl"><div class="seg" role="radiogroup" aria-label="Clip style"><button type="button" role="radio" id="styleGel" aria-checked="true"><img class="st-thumb" alt="" src="data:image/jpeg;base64,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"><span>Gel</span></button><button type="button" role="radio" id="styleClassic" aria-checked="false"><img class="st-thumb" alt="" src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAcFBQYFBAcGBgYIBwcICxILCwoKCxYPEA0SGhYbGhkWGRgcICgiHB4mHhgZIzAkJiorLS4tGyIyNTEsNSgsLSz/2wBDAQcICAsJCxULCxUsHRkdLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCz/wAARCABgADYDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwDwtdYuUggiEVmRAVKk2sZJx03HHzD1z1pl/eS6jsMsdtHszjyIFi6+u0c9Kd5Vv/cH/fRqTyoP+ef/AI8a9ONNGLkZjRAHqackQGGz0PcZFdLp/hHVdYgNxp+j3NzCp2l0Bxn8arXeiXOnXL2t3p08M8Z+ZGVsjvTVPUtqSjzNOxjySMVPyxfN6RKPy9KaCWj2EIAO4QZ/OtFrRfL3/Zn2dd3OPzpixQDP7v8A8eNLkVyObQpuPMXaQgGc/KgB/Oirvlwf88//AB40Vfs0LmOos/iNJaabDaDQ9LkEUfl7mhGW4xk8da5QzEvuGFOcjHaqO41JuNT7WU9GXK73Nu18Wa5p6NHaapcQo3JVW4J9ahm17Urud7ie9lkmk+85PJ6d/wAB+VY7Md1OVjtqFJ3sNyk48rehoS6pdvD5TTsYyNpUYAx6U2wtrrUbtbWzt5bm4k+7HEpZm+gFUGY4q3pOrX2jagl9p9y9tcx52yJ1GeDUylLXl3JjFddjS1Dw/rekwrLqGk3lpG7bVaWFlBPpmil1Xxv4j1q2S31DVZp4kfeF4UbsEZ4A9T+dFTTlW5f3iV/K45Rhf3b2Nez8ReHoNMhgm8DxzTJHseQlsu2PvZ61yLQSFiRayKD0GG4rSlv/ABCLiTyrq/8ALEgCBWfBX246fjWhc3viImQ2V7qCQJCpiEe4h27jOD71tObe/wCVipXZgJZynJawncHoVyP6UxrWZTg2kq+gINbuoX+vfalWC8vYx5eZNrOB5mBnOAec9qZ/aGvva2228vllJ/fHc+QMcZwDj8qhIdRcsLmI0EoAP2WT/vk0iwSnP+iyfgpreW+8Q/2aQLu++2eYBuy+7ZnrjGcZ9qeL7xAtpdeZdXzTA/uCWfcRjnGQCfyrCdTlkZRfMc/5Ev8Az7Sf98miuisLzWftLrf3d28OwEGR3xu+pA96Kl4hLSxsqTfU+rXup5tQ8hXRAbjbkjjGKiFzMrOofzSLnbuUYX/69Nm4upR3acDPoO9OSeKEMTj/AI+MfSu9LyOMS71A2NuZrq4jgjE/VsDisKT4haKkxi/tSFWM3VkIGPrjFcx4vs9a1bVbh1nthHvIjUuflXt2rhbvwZrczHbPac9/Mb/CtoUbrUly10PaTr0ssQkhljkR7kBXXBBHsRXLSWviBQf+KhmJM3lAkvwf733uv6Vg+B9E1vQg8d5cwSWEkyFY0ckpJ6gEcAjr9BXaC4SFyzwrMDd7QGJ4J7/hWjpRvsSpNIXwyur2VxcyXmrvfKC0YV9x5yDu5J+lFTac/wDx9f8AXc0UvZxWlg5rmpqFxsunGf8Al5ArMe7J3c5/0zFP1Nv9Nk/6+hWdv+//ANftVThoDZn6yn2yW5heWWMMxG6JyjDnsaoXNqtxbRwGe4QRkHdHKVY49T3rS1LYkEs5+8Lgp9RWPEd9xGgLjewUbmJAzXXTjeJDepr2jny1P8P2iP8APmpp5eB/1+iqqN5UCx5zsvQufWmXE3T/AK/hRyXkK+hs6bLzd/8AXdqKp6ZIP9KIJ5nbPsaKlw1C5514r1rUovEE6JqFyqht2BKQM+tTeC9L1/xlrRtIdVu4LaLEtxOZGOwdsDPLHt/9aqPijSdRm1+5cwuvzsABC7cZ4ORwc9a9H+CUV9a6ff2sliUjaUyPOUKndhQq8+241pVxEadG8Fr6EwheWp6BpHhzTdFtRDBG87Zy01y5lkc+pJ6fhitFljYYKIR6FRTij+lMMch7V4Lbk7tnZotEcj4r8B2evW0j2FzNpV/neksLsI2b/bQHH4jB+tfPGq3Wu6Tqlxp99d3UVzbSkSIZScMO49fUGvraVHlcMI1TjGBXgXxk0Se68eCW0h3E2kYlIH8XOP8Ax3Fexl1eTl7OWqMKsUtTmvCerajLdXCSX1wy7d+DITzkc0VY8KaBfQ3M7NEwYrjbg9MjnNFehUa5jmk7M//Z"><span>Classic</span></button></div></div>
         </div>
         <div class="opt">
           <div class="opt-text"><span class="opt-name">Face-cam</span><span class="opt-desc" id="camDesc">Shows your camera under the lanes and puts you in your clip</span></div>
@@ -600,7 +608,6 @@ kbd{background:var(--pearl);color:var(--text);border:1px solid rgba(140,120,110,
         <video id="clipVideo" controls playsinline hidden></video>
         <div class="side-info">
           <div class="hint" id="clipHint">Finishing your clip…</div>
-          <div class="clip-len" id="clipStyleRow" hidden><span class="label">Style</span><div class="seg" role="radiogroup" aria-label="Clip style"><button type="button" role="radio" id="cGel" aria-checked="true">Gel</button><button type="button" role="radio" id="cClassic" aria-checked="false">Classic</button></div></div>
           <div class="clip-len" id="clipLenRow" hidden><span class="label">Length</span><div class="seg" role="radiogroup" aria-label="Clip length"><button type="button" role="radio" id="lenFull" aria-checked="true">Full run</button><button type="button" role="radio" id="lenShort" aria-checked="false">15 sec</button></div></div>
           <div class="fprog" id="shortProgWrap" hidden><i id="shortProg"></i></div>
           <div class="actions"><button class="btn primary" id="clipSave" hidden>Save clip</button><button class="btn ig-btn" id="clipIG" type="button" hidden>Share to IG Story</button><a class="btn primary ig-btn" id="clipIGOpen" hidden>Open Instagram Story</a></div>
@@ -1825,10 +1832,8 @@ function pickMime(){
   for (const [m, e] of opts){ try { if (MediaRecorder.isTypeSupported(m)) return [m, e]; } catch(_){} }
   return ["", "webm"];
 }
-function dropOther(){ const o = REC.other; if (!o) return; URL.revokeObjectURL(o.url); if (o.short) URL.revokeObjectURL(o.short.url); if (o.split) URL.revokeObjectURL(o.split.url); REC.other = null; }
 function startRec(){
   if (!recSupported || REC.recorder || !game) return;
-  dropOther();
   if (!REC.canvas){ REC.canvas = document.createElement("canvas"); REC.canvas.width = 720; REC.canvas.height = 1280; REC.ctx = REC.canvas.getContext("2d"); }
   REC.styleUsed = REC.style; GEL.shown = 0; GEL.last = 0; GEL.pops = [];
   drawRec(0);
@@ -1853,33 +1858,13 @@ function startRec(){
     REC.chunks = []; REC.pending = false; renderClip();
     if (REC.blob && REC.len === "short" && (REC.dur || 0) > SHORT_LEN + 1) makeShort();
   };
-  rec.start(250); REC.recorder = rec;
-  // the other style records alongside, so the style can be picked after the run
-  REC.alt = null;
-  try {
-    const other = REC.styleUsed === "gel" ? "classic" : "gel", ac2 = document.createElement("canvas"); ac2.width = 720; ac2.height = 1280;
-    const alt = { style: other, canvas: ac2, ctx: ac2.getContext("2d"), chunks: [] };
-    drawRecStyle(alt.ctx, other, 0);
-    const st2 = ac2.captureStream(30); if (recDest) recDest.stream.getAudioTracks().forEach(tr => st2.addTrack(tr.clone ? tr.clone() : tr));
-    const r2 = new MediaRecorder(st2, mime ? { mimeType: mime, videoBitsPerSecond: 3000000 } : undefined);
-    r2.ondataavailable = e => { if (e.data && e.data.size) alt.chunks.push(e.data); };
-    r2.onstop = () => {
-      st2.getTracks().forEach(tr => tr.stop());
-      const keep = REC.keep && alt.chunks.length;
-      dropOther();
-      REC.other = keep ? (() => { const blob = new Blob(alt.chunks, { type: r2.mimeType || (ext === "mp4" ? "video/mp4" : "video/webm") }); return { styleUsed: other, blob, url: URL.createObjectURL(blob), ext, short: null, split: null }; })() : null;
-      alt.chunks = []; renderClip();
-    };
-    r2.start(250); alt.recorder = r2; REC.alt = alt;
-  } catch(e){ REC.alt = null; }
-  renderRecUi();
+  rec.start(250); REC.recorder = rec; renderRecUi();
 }
 function stopRec(keep){
   if (!REC.recorder) return;
   REC.keep = keep; REC.pending = keep; REC.dur = (performance.now() - REC.t0) / 1000;
   try { REC.recorder.stop(); } catch(e){ REC.pending = false; }
-  if (REC.alt && REC.alt.recorder){ try { REC.alt.recorder.stop(); } catch(e){} }
-  REC.alt = null; REC.recorder = null; renderRecUi(); renderClip();
+  REC.recorder = null; renderRecUi(); renderClip();
 }
 function clearClip(){
   if (REC.url) URL.revokeObjectURL(REC.url); REC.url = null; REC.blob = null;
@@ -1894,7 +1879,9 @@ function renderRecUi(){
   b.setAttribute("aria-pressed", String(on)); if (!on) b.textContent = "● Rec";
   $("recRow").hidden = !recSupported;
   tg.setAttribute("aria-checked", String(!!REC.armed)); $("recState").textContent = REC.armed ? "ON" : "OFF"; $("recState").classList.toggle("on", !!REC.armed);
-
+  $("styleRow").hidden = !recSupported;
+  $("styleGel").setAttribute("aria-checked", String(REC.style === "gel")); $("styleClassic").setAttribute("aria-checked", String(REC.style === "classic"));
+  $("styleDesc").textContent = REC.style === "gel" ? "You full screen, the notes glowing over you, score and tag on gel cards" : "Gameplay on top; you, or your live score, underneath";
 }
 function renderClip(){
   const panel = $("clipPanel"), v = $("clipVideo"), hint = $("clipHint"), save = $("clipSave"), ig = $("clipIG"), lenRow = $("clipLenRow");
@@ -1905,9 +1892,6 @@ function renderClip(){
   if (v.getAttribute("src") !== shown.url){ v.src = shown.url; }
   v.hidden = false;
   lenRow.hidden = (REC.dur || 0) <= SHORT_LEN + 1;
-  $("clipStyleRow").hidden = !REC.other;
-  $("cGel").setAttribute("aria-checked", String(REC.styleUsed === "gel")); $("cClassic").setAttribute("aria-checked", String(REC.styleUsed !== "gel"));
-  $("cGel").disabled = $("cClassic").disabled = REC.shortBusy;
   const wantShort = REC.len === "short" && (REC.dur || 0) > SHORT_LEN + 1;
   $("lenFull").setAttribute("aria-checked", String(!wantShort)); $("lenShort").setAttribute("aria-checked", String(wantShort));
   const share = canShareFiles(), canSave = !!downloadsNS || !inClaude;
@@ -1984,14 +1968,6 @@ async function makeShort(){
   } catch(e){ clearInterval(timer); try { v.pause(); } catch(_){} REC.len = "full"; REC.shortBusy = false; wrap.hidden = true; renderClip(); $("clipHint").textContent = "Couldn't make the 15-second version. Here's the full clip."; return; }
   REC.shortBusy = false; wrap.hidden = true; renderClip();
 }
-function setClipStyle(style){
-  if (REC.shortBusy || !REC.other || REC.styleUsed === style) return;
-  const cur = { styleUsed: REC.styleUsed, blob: REC.blob, url: REC.url, ext: REC.ext, short: REC.short, split: REC.split }, nx = REC.other;
-  REC.styleUsed = nx.styleUsed; REC.blob = nx.blob; REC.url = nx.url; REC.ext = nx.ext; REC.short = nx.short; REC.split = nx.split;
-  REC.other = cur; REC.style = style; store.set("clipStyle", style); REC.igStep = 0;
-  if (REC.len === "short" && !REC.short && (REC.dur || 0) > SHORT_LEN + 1) makeShort();
-  renderClip();
-}
 function setClipLen(len){
   REC.len = len; REC.igStep = 0;
   if (len === "short" && !REC.short && !REC.shortBusy) makeShort();
@@ -2064,8 +2040,8 @@ function gelBlob(c, cx, cy, r, hue, t, beat){
   c.fillStyle = "rgba(255,255,255,.9)"; c.beginPath(); c.ellipse(-r * .38, -r * .45, r * .16, r * .09, -.6, 0, Math.PI * 2); c.fill();
   c.restore();
 }
-function drawRecGel(c, t){
-  const W = 720, H = 1280, g = game.g, p = game.you, now = performance.now() / 1000;
+function drawRecGel(t){
+  const c = REC.ctx, W = 720, H = 1280, g = game.g, p = game.you, now = performance.now() / 1000;
   const beatP = (t - game.beatOff) / game.beat, f = ((beatP % 1) + 1) % 1, beat = Math.pow(.5 + .5 * Math.cos(Math.PI * 2 * f), 4);
   const cam = $("camLive"), camOn = !!(CAM.stream && cam.readyState >= 2);
   // 1. you, full bleed: mirrored, cooled into the aqua world, with a soft bloom
@@ -2132,12 +2108,8 @@ function drawRecGel(c, t){
 }
 function drawRec(t){
   if (!game || !REC.ctx) return;
-  drawRecStyle(REC.ctx, REC.styleUsed, t);
-  if (REC.alt && REC.alt.ctx) drawRecStyle(REC.alt.ctx, REC.alt.style, t);
-}
-function drawRecStyle(c, style, t){ return style === "gel" ? drawRecGel(c, t) : drawRecClassic(c, t); }
-function drawRecClassic(c, t){
-  const W = 720, H = 1280, g = game.g;
+  const c = REC.ctx, W = 720, H = 1280, g = game.g;
+  if (REC.styleUsed === "gel") return drawRecGel(t);
   c.fillStyle = "#05061a"; c.fillRect(0, 0, W, H);
   // top half: the note highway at full width, anchored so the hit line and pads stay in frame
   if (cv.width > 1){
@@ -2479,8 +2451,8 @@ $("clipSave").addEventListener("click", saveClip);
 $("clipIG").addEventListener("click", () => { if (!REC.shortBusy) shareClip(true); });
 $("clipIGOpen").addEventListener("click", () => { setTimeout(() => { REC.igStep = 0; renderClip(); $("clipHint").textContent = "No Instagram? Install it, or post the saved clip from your camera roll."; }, 2500); });
 $("lenFull").addEventListener("click", () => setClipLen("full"));
-$("cGel").addEventListener("click", () => setClipStyle("gel"));
-$("cClassic").addEventListener("click", () => setClipStyle("classic"));
+$("styleGel").addEventListener("click", () => { REC.style = "gel"; store.set("clipStyle", "gel"); renderRecUi(); });
+$("styleClassic").addEventListener("click", () => { REC.style = "classic"; store.set("clipStyle", "classic"); renderRecUi(); });
 $("lenShort").addEventListener("click", () => setClipLen("short"));
 $("faceFile").addEventListener("change", e => { addFace(e.target.files && e.target.files[0]); e.target.value = ""; });
 $("faceMake").addEventListener("click", makeSplit);
