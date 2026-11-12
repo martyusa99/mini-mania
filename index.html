@@ -1975,7 +1975,10 @@ const recSupported = !!(window.MediaRecorder && HTMLCanvasElement.prototype.capt
 let downloadsNS = null;
 try { const u = window.claude && window.claude.use && window.claude.use("downloads"); if (u) u.then(d => { downloadsNS = d; renderClip(); }).catch(() => {}); } catch(e){}
 function pickMime(){
-  const opts = [["video/mp4;codecs=avc1.42E01E,mp4a.40.2","mp4"],["video/mp4","mp4"],["video/webm;codecs=vp9,opus","webm"],["video/webm;codecs=vp8,opus","webm"],["video/webm","webm"]];
+  // H.264 + AAC first: it's what Instagram and the iPhone Photos app take without fuss. A bare "video/mp4" lets Chrome
+  // pick VP9 + Opus inside the MP4, which Instagram often refuses, so that's near the end of the list.
+  const opts = [["video/mp4;codecs=avc1.42E01E,mp4a.40.2","mp4"],["video/mp4;codecs=avc1,mp4a.40.2","mp4"],["video/mp4;codecs=avc1.4D401F,mp4a.40.2","mp4"],
+    ["video/mp4;codecs=avc1,opus","mp4"],["video/mp4;codecs=avc1","mp4"],["video/mp4","mp4"],["video/webm;codecs=vp9,opus","webm"],["video/webm;codecs=vp8,opus","webm"],["video/webm","webm"]];
   for (const [m, e] of opts){ try { if (MediaRecorder.isTypeSupported(m)) return [m, e]; } catch(_){} }
   return ["", "webm"];
 }
@@ -2260,16 +2263,22 @@ const IS_IOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platfo
 const IS_ANDROID = /Android/.test(navigator.userAgent), IS_MOBILE = IS_IOS || IS_ANDROID;
 const IG_STORY_URL = IS_ANDROID ? "intent://story-camera#Intent;scheme=instagram;package=com.instagram.android;S.browser_fallback_url=https%3A%2F%2Fwww.instagram.com%2F;end" : "instagram://story-camera";
 REC.igStep = 0;
+// on a phone: hand the clip to the share menu, where Instagram takes it straight into a Story.
+// if Instagram isn't offered there, the clip is saved and a button opens Instagram's Story camera instead.
 async function storyFlow(){
   const c = shownClip(), hint = $("clipHint"); if (!c || !c.blob) return;
   const f = clipFile(c);
   if (f && canShareFiles() && navigator.canShare({ files: [f] })){
-    hint.textContent = "Step 1: tap “Save Video” so the clip lands in your camera roll.";
+    hint.textContent = IS_IOS ? "In the share menu, tap Instagram, then Story. Don't see Instagram? Tap More, or Save Video." : "In the share menu, pick Instagram Stories. Don't see it? Pick Save or Download.";
     try { await navigator.share({ files: [f] }); }
     catch(e){ if (e && e.name === "AbortError"){ hint.textContent = "Share canceled. Your clip is still here."; return; } downloadClip(c); }
-  } else downloadClip(c);
+    REC.igStep = 1; renderClip();
+    hint.textContent = "Posted from the share menu? You're done. If you saved the video instead, tap “Open Instagram Story” and pick it from the gallery (bottom left).";
+    return;
+  }
+  downloadClip(c);
   REC.igStep = 1; renderClip();
-  hint.textContent = "Step 2: tap “Open Instagram Story”. Your clip is the newest video in the Story gallery (bottom left).";
+  hint.textContent = "Clip saved. Tap “Open Instagram Story”, then pick it from the gallery (bottom left).";
 }
 async function shareClip(toStory){
   if (toStory && IS_MOBILE) return storyFlow();
