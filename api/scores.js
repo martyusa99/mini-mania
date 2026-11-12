@@ -1,5 +1,6 @@
 // MINI MANIA leaderboard: one small file per run in Vercel Blob; the board keeps each producer's best.
 import { put, list } from "@vercel/blob";
+import { owns } from "./_tags.js";
 
 const TRACKS = new Set(["rotn", "boa", "jxx", "ovm", "gso", "bat"]);
 const DIFFS = new Set(["easy", "normal", "hard"]);
@@ -51,6 +52,7 @@ export default async function handler(req, res) {
           !(score >= 0 && score <= MAX_SCORE) || !(acc >= 0 && acc <= 1000) || !(combo >= 0 && combo <= 2000)) {
         return res.status(400).json({ error: "That score couldn't be saved." });
       }
+      if (!(await owns(tag, b.key))) return res.status(403).json({ error: `Only the producer who claimed @${tag} can post scores with it.` });
       const ts = Date.now(), rand = Math.random().toString(36).slice(2, 8);
       const path = `lb/${track}/${diff}/${String(score).padStart(9, "0")}~${encodeURIComponent(tag)}~${ig ? encodeURIComponent(ig) : "-"}~${acc}~${combo}~${ts}~${rand}.json`;
       const body = JSON.stringify({ track, diff, tag, ig, score, acc: acc / 10, combo, ts });
