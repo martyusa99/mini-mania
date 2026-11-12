@@ -525,6 +525,10 @@ kbd{background:var(--pearl);color:var(--text);border:1px solid rgba(140,120,110,
           <div class="opt-text"><span class="opt-name">Record run</span><span class="opt-desc">Saves a vertical clip of your run to post</span></div>
           <div class="opt-ctl"><span class="state" id="recState">OFF</span><button class="switch rec" id="recToggle" type="button" role="switch" aria-checked="false" aria-label="Record run"><span class="knob"></span></button></div>
         </div>
+        <div class="opt" id="styleRow">
+          <div class="opt-text"><span class="opt-name">Clip style</span><span class="opt-desc" id="styleDesc"></span></div>
+          <div class="opt-ctl"><div class="seg" role="radiogroup" aria-label="Clip style"><button type="button" role="radio" id="styleGel" aria-checked="true">Gel</button><button type="button" role="radio" id="styleClassic" aria-checked="false">Classic</button></div></div>
+        </div>
         <div class="opt">
           <div class="opt-text"><span class="opt-name">Face-cam</span><span class="opt-desc" id="camDesc">Shows your camera under the lanes and puts you in your clip</span></div>
           <div class="opt-ctl"><video class="cam-mini" id="camMini" muted playsinline autoplay hidden></video><span class="state" id="camState">OFF</span><button class="switch" id="camToggle" type="button" role="switch" aria-checked="false" aria-label="Face-cam"><span class="knob"></span></button></div>
@@ -1809,6 +1813,7 @@ function pickMime(){
 function startRec(){
   if (!recSupported || REC.recorder || !game) return;
   if (!REC.canvas){ REC.canvas = document.createElement("canvas"); REC.canvas.width = 720; REC.canvas.height = 1280; REC.ctx = REC.canvas.getContext("2d"); }
+  REC.styleUsed = REC.style; GEL.shown = 0; GEL.last = 0; GEL.pops = [];
   drawRec(0);
   let stream, rec;
   const [mime, ext] = pickMime();
@@ -1818,6 +1823,7 @@ function startRec(){
     rec = new MediaRecorder(stream, mime ? { mimeType: mime, videoBitsPerSecond: 3000000 } : undefined);
   } catch(e){ return; }
   REC.chunks = []; REC.ext = ext; REC.t0 = performance.now(); REC.keep = true; REC.gid = game.gid; REC.hadCam = !!CAM.stream; REC.songAt = songTime();
+  REC.styleUsed = REC.style; GEL.shown = 0; GEL.last = 0; GEL.pops = [];
   rec.ondataavailable = e => { if (e.data && e.data.size) REC.chunks.push(e.data); };
   REC.dur = 0;
   rec.onstop = () => {
@@ -1851,6 +1857,9 @@ function renderRecUi(){
   b.setAttribute("aria-pressed", String(on)); if (!on) b.textContent = "● Rec";
   $("recRow").hidden = !recSupported;
   tg.setAttribute("aria-checked", String(!!REC.armed)); $("recState").textContent = REC.armed ? "ON" : "OFF"; $("recState").classList.toggle("on", !!REC.armed);
+  $("styleRow").hidden = !recSupported;
+  $("styleGel").setAttribute("aria-checked", String(REC.style === "gel")); $("styleClassic").setAttribute("aria-checked", String(REC.style === "classic"));
+  $("styleDesc").textContent = REC.style === "gel" ? "You full screen, the notes glowing over you, score and tag on gel cards" : "Gameplay on top; you, or your live score, underneath";
 }
 function renderClip(){
   const panel = $("clipPanel"), v = $("clipVideo"), hint = $("clipHint"), save = $("clipSave"), ig = $("clipIG"), lenRow = $("clipLenRow");
@@ -1870,7 +1879,7 @@ function renderClip(){
   save.textContent = share ? "Save to camera roll" : (REC.split || REC.hadCam ? "Save split-screen clip" : "Save clip");
   if (REC.shortBusy){ hint.textContent = "Making your 15-second clip from the best part of your run. It plays through once, so keep this tab open."; renderFace(); return; }
   const mb = (shown.blob.size / 1048576).toFixed(1), len = shown === REC.short ? "15-second" : "Full-run";
-  const what = REC.split || REC.hadCam ? `${len} split-screen 720×1280 ${shown.ext.toUpperCase()}: your run on top, you on the bottom · ${mb} MB.` : `${len} vertical 720×1280 ${shown.ext.toUpperCase()} with game audio · ${mb} MB.`;
+  const what = REC.styleUsed === "gel" ? `${len} Gel-style 720×1280 ${shown.ext.toUpperCase()} with game audio · ${mb} MB.` : REC.split || REC.hadCam ? `${len} split-screen 720×1280 ${shown.ext.toUpperCase()}: your run on top, you on the bottom · ${mb} MB.` : `${len} vertical 720×1280 ${shown.ext.toUpperCase()} with game audio · ${mb} MB.`;
   hint.textContent = what + (!canSave ? " Saving files isn't available in this view." : share ? " Save it to your camera roll or send it straight to your Story." : " Save it to post or keep.");
   renderFace();
 }
@@ -1891,7 +1900,7 @@ REC.len = "short"; REC.short = null; REC.shortBusy = false;   // the 15-second c
 const fullClip = () => REC.split || REC;
 const shownClip = () => (REC.len === "short" && REC.short) ? REC.short : fullClip();
 const clipName = (c) => { const d = new Date(), stamp = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2,"0")}${String(d.getDate()).padStart(2,"0")}-${String(d.getHours()).padStart(2,"0")}${String(d.getMinutes()).padStart(2,"0")}`;
-  return `mini-mania-${REC.gid || "run"}-${stamp}${REC.split || REC.hadCam ? "-split" : ""}${c === REC.short ? "-15s" : ""}.${c.ext}`; };
+  return `mini-mania-${REC.gid || "run"}-${stamp}${REC.styleUsed === "gel" ? "-gel" : REC.split || REC.hadCam ? "-split" : ""}${c === REC.short ? "-15s" : ""}.${c.ext}`; };
 const clipFile = c => { try { return new File([c.blob], clipName(c), { type: c.ext === "mp4" ? "video/mp4" : "video/webm" }); } catch(e){ return null; } };
 function canShareFiles(){
   if (inClaude || !navigator.share || !navigator.canShare) return false;
@@ -1974,9 +1983,111 @@ async function shareClip(toStory){
   hint.textContent = toStory ? "Clip downloaded. Instagram only takes Stories from its app: send the clip to your phone (AirDrop, Messages or Drive), then post it from Instagram." : "Clip downloaded.";
 }
 const SPLIT_Y = 640;
+/* ---------- "Gel" clip style: four full-bleed layers in a Y2K utopia / translucent blobject look ----------
+   1 your face-cam, full bleed, dreamy and bloomed   2 the note highway over you, screen-blended so you show through
+   3 the score counting up with a live stat line      4 producer details on a gel card                              */
+const GEL = { shown: 0, last: 0, pops: [], small: null };
+REC.style = store.get("clipStyle", "gel") === "classic" ? "classic" : "gel";
+try { const m = /[?&]clip=(gel|classic)\b/.exec(location.search); if (m) REC.style = m[1]; } catch(e){}
+function gelPath(c, x, y, w, h, r){ c.beginPath(); if (c.roundRect) c.roundRect(x, y, w, h, r); else c.rect(x, y, w, h); }
+// a translucent gel slab: tinted body, bright rim, a soft specular streak along the top
+function gelSlab(c, x, y, w, h, r, tint){
+  c.save();
+  gelPath(c, x, y, w, h, r);
+  const body = c.createLinearGradient(0, y, 0, y + h);
+  body.addColorStop(0, "rgba(255,255,255,.42)"); body.addColorStop(.45, tint); body.addColorStop(1, "rgba(255,255,255,.28)");
+  c.fillStyle = body; c.fill();
+  c.lineWidth = 2; c.strokeStyle = "rgba(255,255,255,.85)"; c.stroke();
+  c.clip();
+  const sp = c.createLinearGradient(0, y, 0, y + h * .45); sp.addColorStop(0, "rgba(255,255,255,.75)"); sp.addColorStop(1, "rgba(255,255,255,0)");
+  c.fillStyle = sp; gelPath(c, x + r * .5, y + 5, w - r, h * .38, r * .7); c.fill();
+  const rim = c.createLinearGradient(0, y + h * .7, 0, y + h); rim.addColorStop(0, "rgba(255,255,255,0)"); rim.addColorStop(1, "rgba(200,255,250,.55)");
+  c.fillStyle = rim; c.fillRect(x, y + h * .7, w, h * .3);
+  c.restore();
+}
+// a floating blobject: soft wobbling gel bead with a rim light and a hot specular dot
+function gelBlob(c, cx, cy, r, hue, t, beat){
+  const k = 1 + .08 * beat;
+  c.save(); c.translate(cx, cy); c.scale(k * (1 + .05 * Math.sin(t * 1.3 + hue)), k * (1 + .05 * Math.cos(t * 1.1 + hue)));
+  c.beginPath();
+  for (let i = 0; i <= 48; i++){ const a = i / 48 * Math.PI * 2, rr = r * (1 + .07 * Math.sin(a * 3 + t * 1.7 + hue) + .04 * Math.sin(a * 5 - t * 1.2)); i ? c.lineTo(Math.cos(a) * rr, Math.sin(a) * rr) : c.moveTo(rr, 0); }
+  c.closePath();
+  const g = c.createRadialGradient(-r * .35, -r * .4, r * .05, 0, 0, r * 1.05);
+  g.addColorStop(0, "rgba(255,255,255,.85)"); g.addColorStop(.35, `hsla(${hue},95%,80%,.35)`); g.addColorStop(.8, `hsla(${hue + 30},95%,70%,.22)`); g.addColorStop(1, `hsla(${hue + 50},100%,92%,.6)`);
+  c.fillStyle = g; c.fill(); c.lineWidth = 1.5; c.strokeStyle = "rgba(255,255,255,.55)"; c.stroke();
+  c.fillStyle = "rgba(255,255,255,.9)"; c.beginPath(); c.ellipse(-r * .38, -r * .45, r * .16, r * .09, -.6, 0, Math.PI * 2); c.fill();
+  c.restore();
+}
+function drawRecGel(t){
+  const c = REC.ctx, W = 720, H = 1280, g = game.g, p = game.you, now = performance.now() / 1000;
+  const beatP = (t - game.beatOff) / game.beat, f = ((beatP % 1) + 1) % 1, beat = Math.pow(.5 + .5 * Math.cos(Math.PI * 2 * f), 4);
+  const cam = $("camLive"), camOn = !!(CAM.stream && cam.readyState >= 2);
+  // 1. you, full bleed: mirrored, cooled into the aqua world, with a soft bloom
+  if (camOn){
+    c.save(); c.translate(W, 0); c.scale(-1, 1); coverDraw(c, cam, 0, 0, W, H); c.restore();
+    if (!GEL.small){ GEL.small = document.createElement("canvas"); GEL.small.width = 72; GEL.small.height = 128; }
+    const sg = GEL.small.getContext("2d"); sg.save(); sg.translate(72, 0); sg.scale(-1, 1); coverDraw(sg, cam, 0, 0, 72, 128); sg.restore();
+    c.save(); c.globalCompositeOperation = "screen"; c.globalAlpha = .45; c.imageSmoothingQuality = "high"; c.drawImage(GEL.small, 0, 0, W, H); c.restore();
+  } else {
+    const sky = c.createLinearGradient(0, 0, 0, H); sky.addColorStop(0, "#1d3f9e"); sky.addColorStop(.45, "#4a5fc8"); sky.addColorStop(.7, "#2a3a9a"); sky.addColorStop(1, "#0b1f66");
+    c.fillStyle = sky; c.fillRect(0, 0, W, H);
+  }
+  // iridescent wash that slowly turns, the trance part
+  c.save(); c.globalCompositeOperation = "soft-light";
+  const a = now * .25, ix = Math.cos(a) * W, iy = Math.sin(a) * H * .5;
+  const ir = c.createLinearGradient(W / 2 - ix, H / 2 - iy, W / 2 + ix, H / 2 + iy);
+  ir.addColorStop(0, "#7fe8ff"); ir.addColorStop(.33, "#c9a6ff"); ir.addColorStop(.66, "#ffb3dc"); ir.addColorStop(1, "#c6ff9e");
+  c.globalAlpha = .55; c.fillStyle = ir; c.fillRect(0, 0, W, H); c.restore();
+  // 2. the note highway over you: screen-blended so the dark lanes vanish and only notes, pads and light remain
+  if (cv.width > 1){
+    const sc = W / cv.width, dh = cv.height * sc, dy = H - 190 - dh;
+    c.save(); c.globalCompositeOperation = "screen"; c.globalAlpha = .9; c.drawImage(cv, 0, dy, W, dh);
+    c.restore();
+  }
+  // floating blobjects, swelling on the beat
+  [[110, 300, 70, 190, 0], [610, 520, 54, 280, 1.7], [140, 860, 46, 90, 3.1], [640, 330, 30, 320, 4.4], [380, 980, 26, 160, 5.2]].forEach(([x, y, r, hue, ph]) =>
+    gelBlob(c, x + Math.sin(now * .5 + ph) * 26, y + Math.cos(now * .4 + ph) * 22, r, hue, now + ph, beat));
+  // light sweep across the whole frame every two bars, and a breath of white on each beat
+  { const k = ((beatP / 8) % 1 + 1) % 1, pos = -400 + k * (W + 900);
+    c.save(); c.globalCompositeOperation = "screen"; c.translate(pos, 0); c.transform(1, 0, -.45, 1, 0, 0);
+    const sw = c.createLinearGradient(0, 0, 180, 0); sw.addColorStop(0, "rgba(255,255,255,0)"); sw.addColorStop(.5, "rgba(255,255,255,.28)"); sw.addColorStop(1, "rgba(255,255,255,0)");
+    c.fillStyle = sw; c.fillRect(0, 0, 180, H); c.restore();
+    c.fillStyle = `rgba(255,255,255,${.07 * beat})`; c.fillRect(0, 0, W, H); }
+  // utopian haze at the edges
+  const hz = c.createRadialGradient(W / 2, H * .45, H * .3, W / 2, H * .45, H * .75); hz.addColorStop(0, "rgba(255,255,255,0)"); hz.addColorStop(1, "rgba(235,248,255,.32)");
+  c.fillStyle = hz; c.fillRect(0, 0, W, H);
+  // 3. score counting up, with the live stat line
+  if (p.score < GEL.last) { GEL.shown = 0; GEL.pops = []; }
+  if (p.score > GEL.last){ GEL.pops.push({ v: p.score - GEL.last, t: now }); GEL.last = p.score; }
+  GEL.shown += (p.score - GEL.shown) * .18; if (Math.abs(p.score - GEL.shown) < 1) GEL.shown = p.score;
+  const judged = p.counts.perfect + p.counts.great + p.counts.good + p.counts.miss;
+  const acc = judged ? ((p.counts.perfect + p.counts.great * .8 + p.counts.good * .5) / judged * 100).toFixed(1) + "%" : "–";
+  gelSlab(c, 40, 56, W - 80, 176, 44, "rgba(150,215,255,.32)");
+  c.textAlign = "center"; c.textBaseline = "alphabetic";
+  c.font = '15px "Share Tech Mono", monospace'; c.fillStyle = "rgba(20,40,110,.8)"; c.fillText("SCORE", W / 2, 96);
+  c.font = '900 76px Unbounded, "Arial Black", sans-serif';
+  c.lineJoin = "round"; c.lineWidth = 6; c.strokeStyle = "rgba(20,44,120,.55)"; const sTxt = Math.round(GEL.shown).toLocaleString(); c.strokeText(sTxt, W / 2, 172);
+  const tg = c.createLinearGradient(0, 112, 0, 176); tg.addColorStop(0, "#ffffff"); tg.addColorStop(.48, "#dff3ff"); tg.addColorStop(.52, "#7fb8ff"); tg.addColorStop(1, "#ffffff");
+  c.fillStyle = tg; c.fillText(sTxt, W / 2, 172);
+  c.font = '19px "Share Tech Mono", monospace'; c.fillStyle = "rgba(15,30,90,.9)";
+  c.fillText(`×${multOf(p)}  ·  ${p.combo} COMBO  ·  ${acc}`, W / 2, 210);
+  GEL.pops = GEL.pops.filter(q => now - q.t < .9);
+  GEL.pops.slice(-4).forEach((q, i) => { const k = (now - q.t) / .9; c.globalAlpha = 1 - k; c.font = '800 26px Unbounded, "Arial Black", sans-serif'; c.fillStyle = "#ffffff"; c.strokeStyle = "rgba(20,44,120,.5)"; c.lineWidth = 4; const tx = `+${q.v}`, x = W / 2 + 222, y = 160 - k * 70 - i * 4; c.strokeText(tx, x, y); c.fillText(tx, x, y); });
+  c.globalAlpha = 1;
+  // 4. producer details on a gel card
+  gelSlab(c, 40, H - 168, W - 80, 128, 40, "rgba(220,190,255,.3)");
+  c.textAlign = "left"; c.font = '800 38px Unbounded, "Arial Black", sans-serif'; c.fillStyle = "#ffffff"; c.lineWidth = 5; c.strokeStyle = "rgba(20,44,120,.5)";
+  c.strokeText(profile.tag, 72, H - 104); c.fillText(profile.tag, 72, H - 104);
+  c.font = '17px "Share Tech Mono", monospace'; c.fillStyle = "rgba(15,30,90,.9)";
+  c.fillText(`${g.name.toUpperCase()} · ${(g.artist || "").toUpperCase()}${profile.ig ? "   ·   IG @" + profile.ig : ""}`, 72, H - 66);
+  const art = document.querySelector(".logo-art");
+  if (art && art.width > 1){ const lh = 74, lw = art.width / art.height * lh; c.drawImage(art, W - 56 - lw, H - 160, lw, lh); }
+  c.textBaseline = "alphabetic"; c.textAlign = "left";
+}
 function drawRec(t){
   if (!game || !REC.ctx) return;
   const c = REC.ctx, W = 720, H = 1280, g = game.g;
+  if (REC.styleUsed === "gel") return drawRecGel(t);
   c.fillStyle = "#05061a"; c.fillRect(0, 0, W, H);
   // top half: the note highway at full width, anchored so the hit line and pads stay in frame
   if (cv.width > 1){
@@ -2114,7 +2225,7 @@ async function toggleCam(){
 const FACE = { file:null, url:null, offset:0, busy:false };
 function renderFace(){
   const panel = $("facePanel"); if (!panel) return;
-  panel.hidden = !REC.blob || REC.pending || !recSupported || !!REC.hadCam;
+  panel.hidden = !REC.blob || REC.pending || !recSupported || !!REC.hadCam || REC.styleUsed === "gel";
   $("faceSync").hidden = !FACE.url; $("faceMake").hidden = !FACE.url || FACE.busy;
   $("facePick").textContent = FACE.url ? "Use a different video" : "Add face-cam video";
   $("faceOff").textContent = (FACE.offset >= 0 ? "+" : "") + FACE.offset.toFixed(2) + "s";
@@ -2318,6 +2429,8 @@ $("clipSave").addEventListener("click", saveClip);
 $("clipIG").addEventListener("click", () => { if (!REC.shortBusy) shareClip(true); });
 $("clipIGOpen").addEventListener("click", () => { setTimeout(() => { REC.igStep = 0; renderClip(); $("clipHint").textContent = "No Instagram? Install it, or post the saved clip from your camera roll."; }, 2500); });
 $("lenFull").addEventListener("click", () => setClipLen("full"));
+$("styleGel").addEventListener("click", () => { REC.style = "gel"; store.set("clipStyle", "gel"); renderRecUi(); });
+$("styleClassic").addEventListener("click", () => { REC.style = "classic"; store.set("clipStyle", "classic"); renderRecUi(); });
 $("lenShort").addEventListener("click", () => setClipLen("short"));
 $("faceFile").addEventListener("change", e => { addFace(e.target.files && e.target.files[0]); e.target.value = ""; });
 $("faceMake").addEventListener("click", makeSplit);
